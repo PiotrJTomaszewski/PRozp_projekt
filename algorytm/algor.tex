@@ -38,7 +38,7 @@
 
 \section{Struktury}
 
-\begin{frame}{LIST\_PONY\_POSTPONED}
+\begin{frame}{QUEUE\_PONY}
 \internallinenumbers
     \resetlinenumber[1]
 
@@ -120,7 +120,7 @@
 \end{frame}
 
 \section{Stany procesu}
-\begin{frame}{STATE\_RESTING}
+\begin{frame}{RESTING}
     \internallinenumbers
     \resetlinenumber[1]
     Jest to stan początkowy.
@@ -129,10 +129,10 @@
     Symuluje odpoczynek turysty między zakończeniem jednej wycieczki, a rozpoczęciem kolejnej.
 
     \vspace{1cm}
-    Do kolejnego stanu – STATE\_WAIT\_PONY – proces przechodzi w pewnym, nieokreślonym momencie. Przyjmujemy, że ten czas jest pewną losową wartością >= 0.
+    Do kolejnego stanu – WAIT\_PONY – proces przechodzi w pewnym, nieokreślonym momencie. Przyjmujemy, że ten czas jest pewną losową wartością >= 0.
 \end{frame}
 
-\begin{frame}{STATE\_RESTING - odpowiedzi}
+\begin{frame}{RESTING - odpowiedzi}
     \internallinenumbers
     \resetlinenumber[1]
     Po otrzymaniu REQ\_PONY odpowiada ACK\_PONY.
@@ -147,22 +147,22 @@
     ACK\_SUBMAR – ignoruje.
 \end{frame}
 
-\begin{frame}{STATE\_WAIT\_PONY}
+\begin{frame}{WAIT\_PONY}
     \internallinenumbers
     \resetlinenumber[1]
     Proces w tym stanie ubiega się o  możliwość zabrania stroju kucyka, czyli na dostęp do sekcji krytycznej.
 
     \vspace{1cm}
-    Do kolejnego stanu – STATE\_WAIT\_SUBMAR – proces przechodzi po zabraniu stroju kucyka.    
+    Do kolejnego stanu – WAIT\_SUBMAR – proces przechodzi po zabraniu stroju kucyka.    
 \end{frame}
 
-\begin{frame}{STATE\_WAIT\_PONY - odpowiedzi}
+\begin{frame}{WAIT\_PONY - odpowiedzi}
     \internallinenumbers
     \resetlinenumber[1]
     Na REQ\_PONY odpowiada: \\
         \tab[0.5cm] Jeśli otrzymane zapytanie ma niższy priorytet od wysłanego \\
         \tab[0.5cm] przez ten proces nic nie odpowiada, tylko wstawia id nadawcy 
-        \tab[0.5cm] do swojej listy LIST\_PONY\_POSTPONED.
+        \tab[0.5cm] do swojej listy QUEUE\_PONY.
         
         \vspace{0.3cm}
         \tab[0.5cm] W przeciwnym razie, uznaje priorytet rywala i wysyła ACK\_PONY.
@@ -171,19 +171,19 @@
     Proces w tym stanie ubiega się o możliwość zabrania stroju kucyka, czyli na dostęp do sekcji krytycznej.
 \end{frame}
 
-\begin{frame}{STATE\_WAIT\_SUBMAR}
+\begin{frame}{WAIT\_SUBMAR}
     \internallinenumbers
     \resetlinenumber[1]
     W tym stanie proces ubiega się o dostęp do kolejnej sekcji krytycznej – o zajęcie n miejsc na jednej z łodzi podwodnych.
 
     \vspace{1cm}
-    Do kolejnego stanu – STATE\_BOARDED – przechodzi, kiedy zajmie zasoby – miejsca na pokładzie.
+    Do kolejnego stanu – BOARDED – przechodzi, kiedy zajmie zasoby – miejsca na pokładzie.
 \end{frame}
 
-\begin{frame}{STATE\_WAIT\_SUBMAR - odpowiedzi}
+\begin{frame}{WAIT\_SUBMAR - odpowiedzi}
     \internallinenumbers
     \resetlinenumber[1]
-    REQ\_PONY – nic nie odpowiada, tylko dodaje id nadawcy do swojej listy LIST\_PONY\_POSTPONED.
+    REQ\_PONY – nic nie odpowiada, tylko dodaje id nadawcy do swojej listy QUEUE\_PONY.
 
     \vspace{1cm}
     REQ\_SUBMAR\{id\_łodzi\} – proces dodaje nadawcę do kolejki QUEUE\_SUBMAR\{id\_łodzi\} i odpowiada ACK\_SUBMAR\{id\_łodzi\}. 
@@ -192,10 +192,10 @@
 \section{Algorytm}
 \begin{frame}{Algorytm}
     \internallinenumbers
-    (1.) Proces znajduje się w stanie STATE\_RESTING.
+    (1.) Proces znajduje się w stanie RESTING.
 
     \vspace{0.5cm}
-    (2.) Po upływie losowo wybranego czasu przechodzi do stanu STATE\_WAIT\_PONY i zaczyna ubiegać się o dostęp do sekcji krytycznej algorytmem bazującym na alg.Ricarta-Agrawali.
+    (2.) Po upływie losowo wybranego czasu przechodzi do stanu WAIT\_PONY i zaczyna ubiegać się o dostęp do sekcji krytycznej algorytmem bazującym na alg.Ricarta-Agrawali.
 
     \vspace{0.5cm}
     (3.) Proces wysyła do pozostałych wiadomość REQ\_PONY i czeka na odpowiedź.
@@ -204,22 +204,22 @@
 \begin{frame}{Algorytm}
     \internallinenumbers
     (4.) Każdy proces, który otrzyma REQ\_PONY: \\
-        \tab[0.4cm] (a) Jeśli znajduje się w stanie STATE\_RESTING odpowiada
+        \tab[0.4cm] (a) Jeśli znajduje się w stanie RESTING odpowiada
         \tab[1cm] ACK\_PONY.
 
-        \tab[0.4cm] (b) Jeśli znajduje się w STATE\_WAIT\_PONY i odebrana\\
+        \tab[0.4cm] (b) Jeśli znajduje się w WAIT\_PONY i odebrana\\
         \tab[1cm] wiadomość ma niższy priorytet, niż jego własna, nic nie\\
         \tab[1cm] odpowiada, tylko dodaje nadawcę do\\
-        \tab[1cm] LIST\_PONY\_POSTPONED.
+        \tab[1cm] QUEUE\_PONY.
         
-        \tab[0.4cm] (c) Jeśli znajduje się w STATE\_WAIT\_PONY i odebrana\\
+        \tab[0.4cm] (c) Jeśli znajduje się w WAIT\_PONY i odebrana\\
         \tab[1cm] wiadomość ma wyższy priorytet, uznaje pierwszeństwo  \\
         \tab[1cm] nadawcy i odpowiada ACK\_PONY.
 
         \tab[0.4cm] (d) Jeśli znajduje się w którymś z pozostałych stanów \\
         \tab[1cm] ma przyznany strój kucyka (Jest w sekcji krytycznej). \\
         \tab[1cm] Nic nie odpowiada, tylko dodaje nadawcę do listy \\
-        \tab[1cm] LIST\_PONY\_POSTPONED.
+        \tab[1cm] QUEUE\_PONY.
 \end{frame}
 
 \begin{frame}{Algorytm}
@@ -227,10 +227,10 @@
     (5.) Tutaj następuje modyfikacja alg. Ricarta - Agrawali. Proces ubiegający się o strój kucyka nie musi czekać na otrzymanie wszystkich potwierdzeń, bo strojów w systemie jest >= 1. Dlatego proces może pobrać strój kucyka, gdy otrzyma \textit{(liczba procesów - liczba strojów)} odpowiedzi ACK\_PONY. Przyjmujemy, że od razuma jedno potwierdzenie - swoje własne.
 
     \vspace{0.5cm}
-    (6.) Po zebraniu wymaganej liczby potwierdzeń proces przechodzi do stanu STATE\_WAIT\_SUBMAR.
+    (6.) Po zebraniu wymaganej liczby potwierdzeń proces przechodzi do stanu WAIT\_SUBMAR.
 
     \vspace{0.5cm}
-    (7.) Proces wybiera łódź. Przyjęliśmy, że będzie to pierwsza, która jego zdaniem jest teraz dostępna (LIST\_SUBMAR). Jeśli takiej łodzi nie ma, czeka na otrzymanie RETURN\_SUBMAR\{id\_łodzi\} i wybiera tę łódź.
+    (7.) Proces wybiera łódź. Przyjęliśmy, że będzie to pierwsza, która jego zdaniem jest teraz dostępna (LIST\_SUBMAR). Jeśli takiej łodzi nie ma, czeka na otrzymanie RETURN\_SUBMAR\{id\_łodzi, liczba\_pasażerów\} i wybiera tę łódź.
 \end{frame}
 
 \begin{frame}{Algorytm}
@@ -238,45 +238,45 @@
     (8.) Proces wysyła do wszystkich pozostałych zapytanie REQ\_SUBMAR\{id\_łodzi\} i dodaje siebie do kolejki QUEUE\_SUBMAR\{id\_łodzi\}.
 
     \vspace{0.5cm}
+    TODO: Spełnić warunek postępu!!!
     (9.) Proces, który otrzymał zapytanie REQ\_SUBMAR\{id\_łodzi\} dodaje nadawcę do kolejki QUEUE\_SUBMAR\{id\_łodzi\} i wysyła odpowiedź ACK\_SUBMAR\{id\_łodzi\}.
-    Dodatkowo, proces znajdujący się na pierwszej pozycji na liście sprawdz
 
 \end{frame}
 
 \begin{frame}{Algorytm}
     \internallinenumbers
-    W dalszej części algorytmu potrzebny będzie proces, który wyda sygnał do odpłynięcia. Turyści znajdujący się na łodzi mogliby ubiegać się o dostęp do kolejnej sekcji krytycznej. Jednakże, możemy połączyć tę sekcję z sekcją wsiadania do łodzi i ponownie skorzystając z kolejki QUEUE\_SUBMAR\{id\_łodzi\}, ograniczając tym samym konieczną liczbę przesłanych wiadomości. Zatem sygnał do odpłynięcia i powrotu wyda proces mający pierwszą pozycję w kolejce.
+    W dalszej części algorytmu potrzebny będzie proces, który wyda sygnał do odpłynięcia i potem powrotu. Turyści znajdujący się na łodzi mogliby ubiegać się o dostęp do kolejnej sekcji krytycznej. Jednakże, możemy połączyć tę sekcję z sekcją wsiadania do łodzi i ponownie skorzystając z kolejki QUEUE\_SUBMAR\{id\_łodzi\}, ograniczając tym samym konieczną liczbę przesłanych wiadomości. Zatem sygnał do odpłynięcia i powrotu wyda proces mający pierwszą pozycję w kolejce.
 \end{frame}
 
 \begin{frame}{Algorytm}
     \internallinenumbers
-    (10.) Po otrzymaniu wszystkich ACK\_SUBMAR proces sprawdza, czy zmieści się na łodzi. Tutaj następuje rozszerzenie alg. Lamporta. Zająć miejsce na łodzi, czyli wejść do sekcji krytycznej może proces, który w kolejce powiązanej z łodzią znajduje się na pozycji $i$, jeśli suma rozmiarów turystów na pozycjach $<= i$ nie przekracza maksymalnej pojemności łodzi. Jeśli się zmieści to zajmuje miejsce, wysyła do pierwszego procesu z kolejki wiadomość TRAVEL\_READY i przechodzi do stanu STATE\_BOARDED. Jeśli nie, to wysyła do procesów wiadomość FULL\_SUBMAR\{id\_łodzi\}, po czym usuwa się z kolejki, wybiera kolejną łódź i wraca do kroku (8.).
+    (10.) Po otrzymaniu wszystkich ACK\_SUBMAR proces sprawdza, czy zmieści się na łodzi. Tutaj następuje rozszerzenie alg. Lamporta. Zająć miejsce na łodzi, czyli wejść do sekcji krytycznej może proces, który w kolejce powiązanej z łodzią znajduje się na pozycji $i$, jeśli suma rozmiarów turystów na pozycjach $<= i$ nie przekracza maksymalnej pojemności łodzi. Jeśli się zmieści to zajmuje miejsce, wysyła do pierwszego procesu z kolejki wiadomość TRAVEL\_READY i przechodzi do stanu BOARDED. Jeśli nie, to wysyła do procesów wiadomość FULL\_SUBMAR\{id\_łodzi\}, po czym usuwa się z kolejki, wybiera kolejną łódź i wraca do kroku (8.).
 \end{frame}
 
 \begin{frame}{Algorytm}
     \internallinenumbers
     (11.) Procesy, które otrzymały FULL\_SUBMAR\{id\_łodzi\} usuwają nadawcę z kolejki QUEUE\_SUBMAR\{id\_łodzi\} i oznaczają na LIST\_SUBMAR, że dana łódź jest już niedostępna. \\
 
-    (11.a) Proces na pierwszej pozycji w kolejce rozpoczyna przygotowanie do rozpoczęcia podróży. Jeśli sam jeszcze nie zajął zasobów (jest w stanie STATE\_WAIT\_SUBMAR) odkłada to działanie, aż nie przejdzie do STATE\_BOARDED. Jeśli jest już w STATE\_BOARDED sprawdza czy otrzymał już gotowość (TRAVEL\_READY) od pozostałych procesów w sekcji krytycznej. Kiedy już otrzyma wszystkie potwierdzenia wysyła do wszystkich procesów w łodzi wiadomość DEPARTED\_SUBMAR. Czeka, aż wszyscy odpowiedzą ACK\_TRAVEL, po czym wydaje wygnał do odpłynięcia i przechodzi w stan STATE\_TRAVEL.
+    (11.a) Proces na pierwszej pozycji w kolejce rozpoczyna przygotowanie do rozpoczęcia podróży. Jeśli sam jeszcze nie zajął zasobów (jest w stanie WAIT\_SUBMAR) odkłada to działanie, aż nie przejdzie do BOARDED. Jeśli jest już w BOARDED sprawdza czy otrzymał już gotowość (TRAVEL\_READY) od pozostałych procesów w sekcji krytycznej. Kiedy już otrzyma wszystkie potwierdzenia wysyła do wszystkich procesów w łodzi wiadomość DEPARTED\_SUBMAR. Czeka, aż wszyscy odpowiedzą ACK\_TRAVEL, po czym wydaje wygnał do odpłynięcia i przechodzi w stan TRAVEL.
 \end{frame}
 
 \begin{frame}{Algorytm}
     \internallinenumbers
-    (12.) Proces, który otrzyma ACK\_TRAVEL przechodzi w stan STATE\_TRAVEL i czeka na zakończenie zwiedzania. \\
+    (12.) Proces, który otrzyma ACK\_TRAVEL przechodzi w stan TRAVEL i czeka na zakończenie zwiedzania. \\
 
-    (13.) Po pewnym losowym czasie proces informuje pozostałe o zakończeniu podróży. W pierwszej kolejności, wysyła SUB\_RETURN\{id\_łodzi, liczba\_pasażerów\}, do turystów, którzy z nim płynęli (może to stwierdzić patrząc na kolejkę). Chcemy, aby mogli opuścić łódź, nim nowi turyści na nią wsiądą. Po czym zwalnia łódź.
+    (13.) Po pewnym losowym czasie proces informuje pozostałe o zakończeniu podróży. W pierwszej kolejności, wysyła RETURN\_SUBMAR\{id\_łodzi, liczba\_pasażerów\}, do turystów, którzy z nim płynęli (może to stwierdzić patrząc na kolejkę). Chcemy, aby mogli opuścić łódź, nim nowi turyści na nią wsiądą. Po czym zwalnia łódź.
 \end{frame}
 
 \begin{frame}{Algorytm}
     \internallinenumbers
-    (14.) Procesy, które otrzymały SUB\_RETURN\{id\_łodzi, liczba\_pasażerów\} zwalniają łódź, usuwają z kolejki pierwsze liczba\_pasażerów pozycji, odnotowują przybycie w LIST\_SUBMAR oraz odpowiadają ACK\_TRAVEL. Na końcu przechodzą do stanu STATE\_TRAVEL\_END.
+    (14.) Procesy, które otrzymały RETURN\_SUBMAR\{id\_łodzi, liczba\_pasażerów\} zwalniają łódź, usuwają z kolejki pierwsze liczba\_pasażerów pozycji, odnotowują przybycie w LIST\_SUBMAR oraz odpowiadają ACK\_TRAVEL. Na końcu przechodzą do stanu TRAVEL\_END.
 
-    (15.) Po otrzymaniu wszystkich potwierdzeń ``kapitan'' wysyła SUB\_RETURN\{id\_łodzi, liczba\_pasażerów\} do pozostałych procesów, informując je, że łódź jest już dostępna. Po czym usuwa pierwsze liczba\_pasażerów pozycji z kolejki. 
+    (15.) Po otrzymaniu wszystkich potwierdzeń ``kapitan'' wysyła RETURN\_SUBMAR\{id\_łodzi, liczba\_pasażerów\} do pozostałych procesów, informując je, że łódź jest już dostępna. Po czym usuwa pierwsze liczba\_pasażerów pozycji z kolejki. W ten sposób redukujemy liczbę potrzebnych wiadomości. Normalnie, każdy proces zwalniający sekcję krytyczną musiałby poinformować o tym pozostałe. Ponieważ wszyscy turyści w łodzi opuszczają ją w tym samym czasie, to możemy połączyć wszystkie te wiadomości w jedną.
 \end{frame}
 
 \begin{frame}{Algorytm}
     \internallinenumbers
-    (16.) Proces, który otrzymał SUB\_RETURN\{id\_łodzi, liczba\_pasażerów\} usuwa pierwsze liczba\_pasażerów z kolejki i odnotowuje fakt przybycia łodzi w LIST\_SUBMAR.\\
-    (17.) Proces w stanie STATE\_TRAVEL\_END zwalniają strój kucyka wysyłając ACK\_PONY do wszystkich procesów z LIST\_PONY\_POSTPONED oraz czyści tę listę. Następnie przechodzi do STATE\_RESTING, czym wraca do kroku (1.).
+    (16.) Proces, który otrzymał RETURN\_SUBMAR\{id\_łodzi, liczba\_pasażerów\} usuwa pierwsze liczba\_pasażerów z kolejki i odnotowuje fakt przybycia łodzi w LIST\_SUBMAR.\\
+    (17.) Proces w stanie TRAVEL\_END zwalniają strój kucyka wysyłając ACK\_PONY do wszystkich procesów z QUEUE\_PONY oraz czyści tę listę. Następnie przechodzi do RESTING, czym wraca do kroku (1.).
 \end{frame}
 \end{document}
