@@ -31,61 +31,78 @@
   \titlepage
 \end{frame}
 
-% Uncomment these lines for an automatically generated outline.
-%\begin{frame}{Outline}
-%  \tableofcontents
-%\end{frame}
-
-\section{Struktury}
+\section{Stałe, zmienne i struktury}
 
 \begin{frame}{QUEUE\_PONY}
 \internallinenumbers
     \resetlinenumber[1]
-
-    Lista, na której proces przechowuje identyfikatory procesów, które prosiły go o dostęp do sekcji krytycznej (stroju kucyka), gdy ten proces się w niej znajdował (algorytm Ricarta-Agrawali).
-
-    \vspace{1cm}
-    Procesy z tej listy są informowane, gdy strój jest zwracany  (otrzymują wiadomość ACK\_PONY).
+    Kolejka procesów oczekujących na ACK\_PONY. \\
+    Kolejka jest początkowo pusta. \\
+    Do kolejki trafiają procesy, które ubiegają się o dostęp do sekcji krytycznej, gdy ten proces się w niej znajduje. Czyli turyści, którzy proszą go o zgodę na pobranie stroju kucyka, gdy ma on przy sobie taki strój. \\
+    Po wyjściu z sekcji krytycznej (po zwrocie stroju) do wszystkich procesów z kolejki wysyłane jest ACK\_PONY, kolejka jest następnie czyszczona.
 \end{frame}
 
 \begin{frame}{QUEUE\_SUBMAR\{id\_łodzi\}}
     \internallinenumbers
     \resetlinenumber[1]
-    Każdy proces posiada kolejkę, w której znajdują się procesy ubiegające się o dostęp do danej łodzi podwodnej.
-    
-    \vspace{1cm}
-    Na jej podstawie można wyznaczyć, które procesy mogą zająć miejsce na danej łodzi podwodnej (znajdują się w strefie krytycznej).
+    Każdy proces posiada po jednej kolejce dla każdej łodzi podwodnej.
+    W kolejce znajdują się procesy ubiegające się o miejsce na niej.
 
-    \vspace{1cm}
-    Kolejka jest bardzo podobna do tej z alg. Lamporta, z tą różnicą, że w sekcji krytycznej na raz może znajdować się >1 proces. Dokładny opis znajduje się w części algorytmicznej.
+    \vspace{0.2cm}
+    Wartość ujęta w nawiasy klamrowe oznacza, że mówimy o kolejce powiązanej z łodzią o danym indentyfikatorze.
+
+    \vspace{0.2cm}
+    Dzięki kolejce można wyznaczyć, które procesy mogą zająć miejsce na danej łodzi podwodnej (znaleźć się w strefie krytycznej).
+
+    \vspace{0.2cm}
+    Kolejka wypełniana jest zgodnie z algorytmem Lamporta, z tą różnicą, że w sekcji krytycznej na raz może znajdować się >1 proces. Dokładniej, proces, który otrzymał wszystkie potwierdzenia i w kolejce ma pozycję ``$i$'', może zająć miejsce (wejść do strefy krytycznej), jeśli suma rozmiarów procesów na pozycjach $<=$``$i$'' jest $<=$ maksymalnej pojemności danej łodzi.
+\end{frame}
+
+\begin{frame}{TRY\_NO i MAX\_TRY\_NO}
+    \internallinenumbers
+    \resetlinenumber[1]
+    Aby proces, który czeka w kolejce do łodzi, ale nie starczyło dla niego miejsca nie musiał oczekiwać, aż ta łódź odbędzie podróż i ponownie przybije do brzegu, wycofuje się i próbuje wsiąść do innej łodzi.
+    Takie zachowanie stwarza jednak ryzyko, że proces nigdy nie wyruszy na wyprawę. W celu rozwiązania tego problemu proces zlicza w zmiennej TRY\_NO ile razy musiał się wycofać. Zmienna ta jest na początku równa 0 i jest inkrementowana przy każdym wycofaniu. Gdy procesowi uda się zająć miejsce na łodzi zmienna ta jest zerowana. Jeśli jednak liczba prób przekroczy próg MAX\_TRY\_NO, wtedy proces poddaje się i nie próbuje już zmieniać łodzi, tylko zostaje w kolejce do obecnej. \\
+    MAX\_TRY\_NO jest parametrem, jego wartość jest pewną liczbą $>=0$. Dokładna wartość tej stałej powinna zostać dobrana eksperymentalnie.
 \end{frame}
 
 \begin{frame}{LIST\_SUBMAR}
     \internallinenumbers
     \resetlinenumber[1]
-    Proces przechowuje informację o każdej z łodzi o tym czy, jego zdaniem, znajduje się ona obecnie w porcie, czy też nie.
-    TODO: Również czy nie pełna
-    
-    \vspace{1cm}
-    Proces preferuje wybór łodzi stojących w porcie. Jest to próba minimalizacji czasu, który dana łódź spędzi nieużywana.
-
-    \vspace{1cm}
-    Zawartość tej listy może być nieaktualna i nie spowoduje to błędu. W najgorszym wypadku, proces zacznie ubiegać się o łódź, która jest w podróży i będzie musiał się wycofać (ALBO CZEKAĆ TODO) i wybrać inną.
+    Lista, w której proces przechowuje informację o każdej łodzi podwodnej, czy jego zdaniem znajduje się ona teraz w porcie, niezapełniona, czy też nie. \\
+    Proces preferuje wybór łodzi o najmniejszym stopniu zapełnienia. Wyznaczanie zapełnienia jest złożone obliczeniowo, dlatego jako pewien rodzaj heurystyki przyjmujemy, że proces rozważa tylko te łodzie, które (według jego obecnej wiedzy) stoją w porcie i są niezapełnione. 
+    Jak zostało to już podkreślone, zawartość tej listy może być nieaktualna. Nie spowoduje to jednak błędów. W najgorszym wypadku, proces ustawi się w kolejce do łodzi, która odpłynęła i będzie musiał się z niej wycofać i wybrać inną. Jednak, ten problem występuje niezależnie od tego, czy wykorzystamy tę listę, czy nie. Próba uniknięcia tego zjawiska wiązałaby się z ograniczeniem współbieżności.
 \end{frame}
 
-\begin{frame}{DICT\_TOURISTS\_SIZES}
+\begin{frame}{DICT\_TOURIST\_SIZES}
     \internallinenumbers
     \resetlinenumber[1]
-    Tablica poglądowa lub w ogólności słownik, w którym kluczem jest identyfikator procesu, natomiast wartością jest rozmiar turysty (ile miejsc na łodzi zajmuje). Wartości te są stałe, więc na potrzeby algorytmu przyjmujemy, że są już każdemu procesowi znane.
-    
-    \vspace{1cm}
-    Jeśli jednak założyć, że wartości te nie są znane z góry, procesy musiałyby wymienić się nimi między sobą przed rozpoczęciem pętli głównej.
+    Tablica poglądowa lub w ogólności słownik, w którym kluczem jest identyfikator procesu, natomiast wartością jest rozmiar turysty (ile miejsc na łodzi zajmuje). 
+
+    \vspace{0.4cm}
+    Wartości te są stałe, więc na potrzeby algorytmu przyjmujemy, że są już każdemu procesowi znane.
+
+    \vspace{0.4cm}
+    Jeśli jednak założyć, że wartości te nie są znane z góry, procesy musiałyby przesłać swój rozmiar pozostałym przed rozpoczęciem pętli głównej.
 \end{frame}
 
 \begin{frame}{DICT\_SUBMAR\_CAPACITY}
     \internallinenumbers
     \resetlinenumber[1]
-    Tablica poglądowa lub w ogólności słownik, w którym kluczem jest identyfikator łodzi podwodnej, natomiast wartością jest jej maksymalna pojemność. Wartości te są stałe, więc na potrzeby algorytmu przyjmujemy, że są już każdemu procesowi znane.
+    Tablica poglądowa lub w ogólności słownik, w którym kluczem jest identyfikator łodzi podwodnej, natomiast wartością jest jej maksymalna pojemność.
+
+    \vspace{0.4cm}
+    Wartości te są stałe, więc na potrzeby algorytmu przyjmujemy, że są już każdemu procesowi znane.
+\end{frame}
+
+
+\begin{frame}{Pozostałę stałe i zmienne}
+    \begin{description}
+        \item [PONY\_NO] Łączna liczba dostępnych strojów kucyka (stała).
+        \item [TOURIST\_NO] Łączna liczba turystów (stała).
+        \item [SUBMAR\_NO] Łączna liczba łodzi podwodnych (stała).
+    \end{description}
+
 \end{frame}
 
 \section{Wiadomości}
@@ -101,7 +118,7 @@
     Uznaliśmy, że uwzględnienie aktualizacji zegarów i przesyłu znaczników jedynie zmniejszyłoby czytelność algorytmu, dlatego zostało w dalszym opisie ograniczone do minimum.
 
     \vspace{0.7cm}
-    Rozważaliśmy również dołączanie do odpowiedzi na zapytania znacznika tego zapytania. Pozwoliłoby to na weryfikację czy zgoda nie dotyczy jakiegoś przedawnionego zapytania.
+    Rozważaliśmy również dołączanie do odpowiedzi na zapytania znacznika tego zapytania. Pozwoliłoby to na weryfikację czy zgoda nie dotyczy jakiegoś przedawnionego zapytania. (Na przykład czy ACK\_PONY nie dotyczy poprzedniej iteracji)
 \end{frame}
 
 \begin{frame}{REQ\_PONY}
@@ -224,13 +241,16 @@
 
 \begin{frame}{Algorytm}
     \internallinenumbers
-    (5.) Tutaj następuje modyfikacja alg. Ricarta - Agrawali. Proces ubiegający się o strój kucyka nie musi czekać na otrzymanie wszystkich potwierdzeń, bo strojów w systemie jest >= 1. Dlatego proces może pobrać strój kucyka, gdy otrzyma \textit{(liczba procesów - liczba strojów)} odpowiedzi ACK\_PONY. Przyjmujemy, że od razuma jedno potwierdzenie - swoje własne.
+    (5.) Tutaj następuje modyfikacja alg. Ricarta - Agrawali. Proces ubiegający się o strój kucyka nie musi czekać na otrzymanie wszystkich potwierdzeń, bo strojów w systemie jest >= 1. Dlatego proces może pobrać strój kucyka, gdy otrzyma \textit{(liczba procesów - liczba strojów)} odpowiedzi ACK\_PONY. Przyjmujemy, że od razu ma jedno potwierdzenie - swoje własne.
 
     \vspace{0.5cm}
     (6.) Po zebraniu wymaganej liczby potwierdzeń proces przechodzi do stanu WAIT\_SUBMAR.
 
-    \vspace{0.5cm}
-    (7.) Proces wybiera łódź. Przyjęliśmy, że będzie to łódź, która według jego aktualnej wiedzy jest w najmniejszym stopniu zajęta.
+\end{frame}
+
+\begin{frame}{Algorytm}
+    \internallinenumbers
+    (7.) Proces wybiera łódź. Przyjęliśmy, że będzie to łódź, która według jego aktualnej wiedzy jest w najmniejszym stopniu zajęta. Wyznaczenie zajętości może być wymagające obliczeniowo, dlatego proces rozważa tylko te łodzie, na które jego zdaniem są jeszcze dostępne (LIST\_SUBMAR). Jeśli takiej łodzi nie mat, to proces czeka na sygnał RETURN\_SUBMAR.
 \end{frame}
 
 \begin{frame}{Algorytm}
@@ -249,13 +269,13 @@
 
 \begin{frame}{Algorytm}
     \internallinenumbers
-    (10.) Po otrzymaniu wszystkich ACK\_SUBMAR proces sprawdza, czy zmieści się na łodzi. Tutaj następuje rozszerzenie alg. Lamporta. Zająć miejsce na łodzi, czyli wejść do sekcji krytycznej może proces, który w kolejce powiązanej z łodzią znajduje się na pozycji $i$, jeśli suma rozmiarów turystów na pozycjach $<= i$ nie przekracza maksymalnej pojemności łodzi. Jeśli się zmieści to zajmuje miejsce, wysyła do pierwszego procesu z kolejki wiadomość TRAVEL\_READY i przechodzi do stanu BOARDED. Jeśli nie, sprawdza czy przekroczył już maksymalną liczbę prób, jeśli tak to się poddaje i stwierdza, że poczeka sobie w kolejce. Wysyła wtedy do procesów FULL\_SUBMAR\_STAY\{id\_łodzi\}. W przeciwnym razie wysyła do procesów wiadomość FULL\_SUBMAR\{id\_łodzi\}, po czym usuwa się z kolejki. \\
+    (10.) Po otrzymaniu wszystkich ACK\_SUBMAR proces sprawdza, czy zmieści się na łodzi. Tutaj następuje rozszerzenie alg. Lamporta. Zająć miejsce na łodzi, czyli wejść do sekcji krytycznej może proces, który w kolejce powiązanej z łodzią znajduje się na pozycji $i$, jeśli suma rozmiarów turystów na pozycjach $<= i$ nie przekracza maksymalnej pojemności łodzi. Jeśli się zmieści to zajmuje miejsce, wysyła do pierwszego procesu z kolejki wiadomość TRAVEL\_READY i przechodzi do stanu BOARDED. Jeśli nie, sprawdza czy przekroczył już maksymalną liczbę prób, jeśli tak to się poddaje i stwierdza, że poczeka sobie w kolejce. Wysyła wtedy do procesów FULL\_SUBMAR\_STAY\{id\_łodzi\}. W przeciwnym razie wysyła do procesów wiadomość FULL\_SUBMAR\_RETREAT\{id\_łodzi\}, po czym usuwa się z kolejki. \\
     Wybiera kolejną łódź i wraca do kroku (8.).
 \end{frame}
 
 \begin{frame}{Algorytm}
     \internallinenumbers
-    (11.) Procesy, które otrzymały FULL\_SUBMAR\{id\_łodzi\} usuwają nadawcę z kolejki QUEUE\_SUBMAR\{id\_łodzi\} i oznaczają na LIST\_SUBMAR, że dana łódź jest już niedostępna. Jeśli była to wiadomość FULL\_SUBMAR\_STAY\{id\_łodzi\} jedynie oznaczają łódź jako niedostępną. \\
+    (11.) Procesy, które otrzymały FULL\_SUBMAR\_RETREAT\{id\_łodzi\} usuwają nadawcę z kolejki QUEUE\_SUBMAR\{id\_łodzi\} i oznaczają na LIST\_SUBMAR, że dana łódź jest już niedostępna. Jeśli była to wiadomość FULL\_SUBMAR\_STAY\{id\_łodzi\} jedynie oznaczają łódź jako niedostępną. \\
 
     (11.a) Proces na pierwszej pozycji w kolejce rozpoczyna przygotowanie do rozpoczęcia podróży. Jeśli sam jeszcze nie zajął zasobów (jest w stanie WAIT\_SUBMAR) odkłada to działanie, aż nie przejdzie do BOARDED. Jeśli jest już w BOARDED sprawdza czy otrzymał już gotowość (TRAVEL\_READY) od pozostałych procesów w sekcji krytycznej. Kiedy już otrzyma wszystkie potwierdzenia wysyła do wszystkich procesów w łodzi wiadomość DEPARTED\_SUBMAR. Czeka, aż wszyscy odpowiedzą ACK\_TRAVEL, po czym wydaje wygnał do odpłynięcia i przechodzi w stan TRAVEL.
 \end{frame}
@@ -269,7 +289,7 @@
 
 \begin{frame}{Algorytm}
     \internallinenumbers
-    (14.) Procesy, które otrzymały RETURN\_SUBMAR\{id\_łodzi, liczba\_pasażerów\} zwalniają łódź, usuwają z kolejki pierwsze liczba\_pasażerów pozycji, odnotowują przybycie w LIST\_SUBMAR oraz odpowiadają ACK\_TRAVEL. Na końcu przechodzą do stanu TRAVEL\_END.
+    (14.) Procesy, które otrzymały RETURN\_SUBMAR\{id\_łodzi, liczba\_pasażerów\} zwalniają łódź, usuwają z kolejki pierwsze liczba\_pasażerów pozycji, odnotowują przybycie w LIST\_SUBMAR oraz odpowiadają ACK\_TRAVEL. Na końcu przechodzą do stanu ON\_SHORE.
 
     (15.) Po otrzymaniu wszystkich potwierdzeń ``kapitan'' wysyła RETURN\_SUBMAR\{id\_łodzi, liczba\_pasażerów\} do pozostałych procesów, informując je, że łódź jest już dostępna. Po czym usuwa pierwsze liczba\_pasażerów pozycji z kolejki. W ten sposób redukujemy liczbę potrzebnych wiadomości. Normalnie, każdy proces zwalniający sekcję krytyczną musiałby poinformować o tym pozostałe. Ponieważ wszyscy turyści w łodzi opuszczają ją w tym samym czasie, to możemy połączyć wszystkie te wiadomości w jedną.
 \end{frame}
@@ -277,6 +297,6 @@
 \begin{frame}{Algorytm}
     \internallinenumbers
     (16.) Proces, który otrzymał RETURN\_SUBMAR\{id\_łodzi, liczba\_pasażerów\} usuwa pierwsze liczba\_pasażerów z kolejki i odnotowuje fakt przybycia łodzi w LIST\_SUBMAR.\\
-    (17.) Proces w stanie TRAVEL\_END zwalniają strój kucyka wysyłając ACK\_PONY do wszystkich procesów z QUEUE\_PONY oraz czyści tę listę. Następnie przechodzi do RESTING, czym wraca do kroku (1.).
+    (17.) Proces w stanie ON\_SHORE zwalniaja strój kucyka wysyłając ACK\_PONY do wszystkich procesów z QUEUE\_PONY oraz czyści tę listę. Następnie przechodzi do RESTING, czym wraca do kroku (1.).
 \end{frame}
 \end{document}
