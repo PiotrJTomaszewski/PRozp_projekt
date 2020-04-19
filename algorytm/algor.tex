@@ -243,10 +243,10 @@
 
 \end{frame}
 
-% \begin{frame}{Algorytm}
-%     \internallinenumbers
-%     W dalszej części algorytmu potrzebny będzie proces, który wyda sygnał do odpłynięcia. Turyści znajdujący się na łodzi mogliby ubiegać się o dostęp do kolejnej sekcji krytycznej. Jednakże byłoby to działanie nadmiarowe, gdyż możemy ponownie skorzystać z kolejki QUEUE\_SUBMAR\{id\_łodzi\}. Zatem sygnał do odpłynięcia wyda proces mający pierwszą pozycję w kolejce.
-% \end{frame}
+\begin{frame}{Algorytm}
+    \internallinenumbers
+    W dalszej części algorytmu potrzebny będzie proces, który wyda sygnał do odpłynięcia. Turyści znajdujący się na łodzi mogliby ubiegać się o dostęp do kolejnej sekcji krytycznej. Jednakże, możemy połączyć tę sekcję z sekcją wsiadania do łodzi i ponownie skorzystając z kolejki QUEUE\_SUBMAR\{id\_łodzi\}, ograniczając tym samym konieczną liczbę przesłanych wiadomości. Zatem sygnał do odpłynięcia i powrotu wyda proces mający pierwszą pozycję w kolejce.
+\end{frame}
 
 \begin{frame}{Algorytm}
     \internallinenumbers
@@ -257,11 +257,26 @@
     \internallinenumbers
     (11.) Procesy, które otrzymały FULL\_SUBMAR\{id\_łodzi\} usuwają nadawcę z kolejki QUEUE\_SUBMAR\{id\_łodzi\} i oznaczają na LIST\_SUBMAR, że dana łódź jest już niedostępna. \\
 
-    % (11.a) Proces na pierwszej pozycji w kolejce rozpoczyna przygotowanie do rozpoczęcia podróży. Jeśli sam jeszcze nie zajął zasobów (jest w stanie STATE\_WAIT\_SUBMAR) odkłada to działanie, aż nie przejdzie do STATE\_BOARDED. Jeśli jest już w STATE\_BOARDED sprawdza czy otrzymał już gotowość (TRAVEL\_READY) od pozostałych procesów w sekcji krytycznej. Kiedy już otrzyma wszystkie potwierdzenia wysyła do wszystkich procesów wiadomość DEPARTED\_SUBMAR. Czeka, aż wszyscy odpowiedzą ACK\_TRAVEL
+    (11.a) Proces na pierwszej pozycji w kolejce rozpoczyna przygotowanie do rozpoczęcia podróży. Jeśli sam jeszcze nie zajął zasobów (jest w stanie STATE\_WAIT\_SUBMAR) odkłada to działanie, aż nie przejdzie do STATE\_BOARDED. Jeśli jest już w STATE\_BOARDED sprawdza czy otrzymał już gotowość (TRAVEL\_READY) od pozostałych procesów w sekcji krytycznej. Kiedy już otrzyma wszystkie potwierdzenia wysyła do wszystkich procesów w łodzi wiadomość DEPARTED\_SUBMAR. Czeka, aż wszyscy odpowiedzą ACK\_TRAVEL, po czym wydaje wygnał do odpłynięcia i przechodzi w stan STATE\_TRAVEL.
 \end{frame}
 
 \begin{frame}{Algorytm}
-    TODO: Jak najlepiej dać sygnał rozpoczęcia podróży.
+    \internallinenumbers
+    (12.) Proces, który otrzyma ACK\_TRAVEL przechodzi w stan STATE\_TRAVEL i czeka na zakończenie zwiedzania. \\
+
+    (13.) Po pewnym losowym czasie proces informuje pozostałe o zakończeniu podróży. W pierwszej kolejności, wysyła SUB\_RETURN\{id\_łodzi, liczba\_pasażerów\}, do turystów, którzy z nim płynęli (może to stwierdzić patrząc na kolejkę). Chcemy, aby mogli opuścić łódź, nim nowi turyści na nią wsiądą. Po czym zwalnia łódź.
 \end{frame}
 
+\begin{frame}{Algorytm}
+    \internallinenumbers
+    (14.) Procesy, które otrzymały SUB\_RETURN\{id\_łodzi, liczba\_pasażerów\} zwalniają łódź, usuwają z kolejki pierwsze liczba\_pasażerów pozycji, odnotowują przybycie w LIST\_SUBMAR oraz odpowiadają ACK\_TRAVEL. Na końcu przechodzą do stanu STATE\_TRAVEL\_END.
+
+    (15.) Po otrzymaniu wszystkich potwierdzeń ``kapitan'' wysyła SUB\_RETURN\{id\_łodzi, liczba\_pasażerów\} do pozostałych procesów, informując je, że łódź jest już dostępna. Po czym usuwa pierwsze liczba\_pasażerów pozycji z kolejki. 
+\end{frame}
+
+\begin{frame}{Algorytm}
+    \internallinenumbers
+    (16.) Proces, który otrzymał SUB\_RETURN\{id\_łodzi, liczba\_pasażerów\} usuwa pierwsze liczba\_pasażerów z kolejki i odnotowuje fakt przybycia łodzi w LIST\_SUBMAR.\\
+    (17.) Proces w stanie STATE\_TRAVEL\_END zwalniają strój kucyka wysyłając ACK\_PONY do wszystkich procesów z LIST\_PONY\_POSTPONED oraz czyści tę listę. Następnie przechodzi do STATE\_RESTING, czym wraca do kroku (1.).
+\end{frame}
 \end{document}
