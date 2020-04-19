@@ -109,22 +109,29 @@
 \begin{frame}{Znacznik Lamporta (Timestamp)}
     \internallinenumbers
     \resetlinenumber[1]
-    W celu określenia relacji uprzedniości zdarzeń w algorytmie zastosowany jest zegar logiczny Lamporta.
-
-    \vspace{0.7cm}
-    Do wysyłanych przez proces wiadomości dołączane są znaczniki czasowe.
-    
-    \vspace{0.7cm}
-    Uznaliśmy, że uwzględnienie aktualizacji zegarów i przesyłu znaczników jedynie zmniejszyłoby czytelność algorytmu, dlatego zostało w dalszym opisie ograniczone do minimum.
-
-    \vspace{0.7cm}
-    Rozważaliśmy również dołączanie do odpowiedzi na zapytania znacznika tego zapytania. Pozwoliłoby to na weryfikację czy zgoda nie dotyczy jakiegoś przedawnionego zapytania. (Na przykład czy ACK\_PONY nie dotyczy poprzedniej iteracji)
+    Do każdej wiadomości dołączany jest znacznik czasowy (timestamp) modyfikowany zgodnie z zasadami zegara logicznego Lamporta.
 \end{frame}
 
-\begin{frame}{REQ\_PONY}
+\begin{frame}{Wiadomości}
     \internallinenumbers
     \resetlinenumber[1]
-    Proces wysyła tę wiadomość, gdy chce uzyskać dostęp do sekcji krytycznej – dostęp do stroju kucyka.
+    \begin{description}
+        \item [REQ\_PONY] żądanie dostępu do sekcji krytycznej (żądanie dostępu do stroju kucyka).
+        \item [ACK\_PONY] potwierdzenie dostępu do stroju kucyka.
+        \item [REQ\_SUBMAR\{id\_łodzi\}] żądanie dostępu do sekcji krytycznej (do miejsca na łodzi podwodnej). Id\_łodzi jest parametrem wiadomości.
+        \item [ACK\_SUBMAR\{id\_łodzi\}] potwierdzenie wpisania do kolejki do wskazanej łodzi (id\_łodzi).
+        \item [FULL\_SUBMAR\_RETREAT\{id\_łodzi\}] wysyłane przez proces, któremu nie udało się wsiąść do łodzi, więc się z niej wycofuje.
+        \item [FULL\_SUBMAR\_STAY\{id\_łodzi\}] wysyłane przez proces, któremu nie udało się wsiąść do łodzi, ale poddaje się i zostaje w kolejce.
+    \end{description}
+\end{frame}
+
+\begin{frame}{Wiadomości c.d.}
+    \internallinenumbers
+    \begin{description}
+        \item [RETURN\_SUBMAR\{id\_łodzi, liczba\_pasażerów\}] informacja, że łódź o podanym id i wioząca podaną liczbę pasażerów wróciła do portu. Dla procesów, które płynęły tą łodzią oznacza to rozkaz zwolnienia zasobów (opuszczenia jej), dla ogółu procesów, że można usunąć z kolejki podaną drugim parametrem liczbę procesów.
+        \item [TRAVEL\_READY] informacja, że proces zajął zasoby (wsiadł do łodzi).
+    \end{description}
+
 \end{frame}
 
 \begin{frame}{ACK\_PONY}
@@ -277,7 +284,8 @@
     \internallinenumbers
     (11.) Procesy, które otrzymały FULL\_SUBMAR\_RETREAT\{id\_łodzi\} usuwają nadawcę z kolejki QUEUE\_SUBMAR\{id\_łodzi\} i oznaczają na LIST\_SUBMAR, że dana łódź jest już niedostępna. Jeśli była to wiadomość FULL\_SUBMAR\_STAY\{id\_łodzi\} jedynie oznaczają łódź jako niedostępną. \\
 
-    (11.a) Proces na pierwszej pozycji w kolejce rozpoczyna przygotowanie do rozpoczęcia podróży. Jeśli sam jeszcze nie zajął zasobów (jest w stanie WAIT\_SUBMAR) odkłada to działanie, aż nie przejdzie do BOARDED. Jeśli jest już w BOARDED sprawdza czy otrzymał już gotowość (TRAVEL\_READY) od pozostałych procesów w sekcji krytycznej. Kiedy już otrzyma wszystkie potwierdzenia wysyła do wszystkich procesów w łodzi wiadomość DEPARTED\_SUBMAR. Czeka, aż wszyscy odpowiedzą ACK\_TRAVEL, po czym wydaje wygnał do odpłynięcia i przechodzi w stan TRAVEL.
+    (11.a) Proces na pierwszej pozycji w kolejce rozpoczyna przygotowanie do rozpoczęcia podróży. Jeśli sam jeszcze nie zajął zasobów (jest w stanie WAIT\_SUBMAR) odkłada to działanie, aż nie przejdzie do BOARDED. Jeśli jest już w BOARDED sprawdza czy otrzymał już gotowość (TRAVEL\_READY) od pozostałych procesów w sekcji krytycznej. 
+    ????TODO:Kiedy już otrzyma wszystkie potwierdzenia wysyła do wszystkich procesów w łodzi wiadomość DEPART\_SUBMAR. Czeka, aż wszyscy odpowiedzą ACK\_TRAVEL, po czym wydaje wygnał do odpłynięcia i przechodzi w stan TRAVEL.
 \end{frame}
 
 \begin{frame}{Algorytm}
