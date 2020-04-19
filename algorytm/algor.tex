@@ -230,7 +230,7 @@
     (6.) Po zebraniu wymaganej liczby potwierdzeń proces przechodzi do stanu WAIT\_SUBMAR.
 
     \vspace{0.5cm}
-    (7.) Proces wybiera łódź. Przyjęliśmy, że będzie to pierwsza, która jego zdaniem jest teraz dostępna (LIST\_SUBMAR). Jeśli takiej łodzi nie ma, czeka na otrzymanie RETURN\_SUBMAR\{id\_łodzi, liczba\_pasażerów\} i wybiera tę łódź.
+    (7.) Proces wybiera łódź. Przyjęliśmy, że będzie to łódź, która według jego aktualnej wiedzy jest w najmniejszym stopniu zajęta.
 \end{frame}
 
 \begin{frame}{Algorytm}
@@ -238,7 +238,6 @@
     (8.) Proces wysyła do wszystkich pozostałych zapytanie REQ\_SUBMAR\{id\_łodzi\} i dodaje siebie do kolejki QUEUE\_SUBMAR\{id\_łodzi\}.
 
     \vspace{0.5cm}
-    TODO: Spełnić warunek postępu!!!
     (9.) Proces, który otrzymał zapytanie REQ\_SUBMAR\{id\_łodzi\} dodaje nadawcę do kolejki QUEUE\_SUBMAR\{id\_łodzi\} i wysyła odpowiedź ACK\_SUBMAR\{id\_łodzi\}.
 
 \end{frame}
@@ -250,12 +249,13 @@
 
 \begin{frame}{Algorytm}
     \internallinenumbers
-    (10.) Po otrzymaniu wszystkich ACK\_SUBMAR proces sprawdza, czy zmieści się na łodzi. Tutaj następuje rozszerzenie alg. Lamporta. Zająć miejsce na łodzi, czyli wejść do sekcji krytycznej może proces, który w kolejce powiązanej z łodzią znajduje się na pozycji $i$, jeśli suma rozmiarów turystów na pozycjach $<= i$ nie przekracza maksymalnej pojemności łodzi. Jeśli się zmieści to zajmuje miejsce, wysyła do pierwszego procesu z kolejki wiadomość TRAVEL\_READY i przechodzi do stanu BOARDED. Jeśli nie, to wysyła do procesów wiadomość FULL\_SUBMAR\{id\_łodzi\}, po czym usuwa się z kolejki, wybiera kolejną łódź i wraca do kroku (8.).
+    (10.) Po otrzymaniu wszystkich ACK\_SUBMAR proces sprawdza, czy zmieści się na łodzi. Tutaj następuje rozszerzenie alg. Lamporta. Zająć miejsce na łodzi, czyli wejść do sekcji krytycznej może proces, który w kolejce powiązanej z łodzią znajduje się na pozycji $i$, jeśli suma rozmiarów turystów na pozycjach $<= i$ nie przekracza maksymalnej pojemności łodzi. Jeśli się zmieści to zajmuje miejsce, wysyła do pierwszego procesu z kolejki wiadomość TRAVEL\_READY i przechodzi do stanu BOARDED. Jeśli nie, sprawdza czy przekroczył już maksymalną liczbę prób, jeśli tak to się poddaje i stwierdza, że poczeka sobie w kolejce. Wysyła wtedy do procesów FULL\_SUBMAR\_STAY\{id\_łodzi\}. W przeciwnym razie wysyła do procesów wiadomość FULL\_SUBMAR\{id\_łodzi\}, po czym usuwa się z kolejki. \\
+    Wybiera kolejną łódź i wraca do kroku (8.).
 \end{frame}
 
 \begin{frame}{Algorytm}
     \internallinenumbers
-    (11.) Procesy, które otrzymały FULL\_SUBMAR\{id\_łodzi\} usuwają nadawcę z kolejki QUEUE\_SUBMAR\{id\_łodzi\} i oznaczają na LIST\_SUBMAR, że dana łódź jest już niedostępna. \\
+    (11.) Procesy, które otrzymały FULL\_SUBMAR\{id\_łodzi\} usuwają nadawcę z kolejki QUEUE\_SUBMAR\{id\_łodzi\} i oznaczają na LIST\_SUBMAR, że dana łódź jest już niedostępna. Jeśli była to wiadomość FULL\_SUBMAR\_STAY\{id\_łodzi\} jedynie oznaczają łódź jako niedostępną. \\
 
     (11.a) Proces na pierwszej pozycji w kolejce rozpoczyna przygotowanie do rozpoczęcia podróży. Jeśli sam jeszcze nie zajął zasobów (jest w stanie WAIT\_SUBMAR) odkłada to działanie, aż nie przejdzie do BOARDED. Jeśli jest już w BOARDED sprawdza czy otrzymał już gotowość (TRAVEL\_READY) od pozostałych procesów w sekcji krytycznej. Kiedy już otrzyma wszystkie potwierdzenia wysyła do wszystkich procesów w łodzi wiadomość DEPARTED\_SUBMAR. Czeka, aż wszyscy odpowiedzą ACK\_TRAVEL, po czym wydaje wygnał do odpłynięcia i przechodzi w stan TRAVEL.
 \end{frame}
