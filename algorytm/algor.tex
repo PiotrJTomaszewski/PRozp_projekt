@@ -18,6 +18,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lineno}
+\usepackage{xcolor}
 \linenumbers
 
 \newcommand\tab[1][1cm]{\hspace*{#1}}
@@ -232,9 +233,12 @@
     Proces znajduje się w tym stanie, gdy ma już strój kucyka, ale nie wybrał sobie jeszcze łodzi.
 
     \vspace{0.4cm}
-    Proces wybiera łódź podwodną. Będzie starał się wybrać taką, która według jego obecnej wiedzy jest w najmniejszym stopniu zajęta. Ponieważ wyznaczanie zajętości wymaga kilku obliczeń, proces ogranicza sobie zbiór kandydatów do tych, które, (również według obecnej, niekoniecznie aktualnej wiedzy), znajdują się w porcie i mają jeszcze wolne miejsca (lista LIST\_SUBMAR). Jeśli takich łodzi nie ma, czeka na sygnał RETURN\_SUBMAR.
-    
-    \vspace{0.4cm}
+    Proces wybiera łódź podwodną. Będzie starał się wybrać taką, która według jego obecnej wiedzy jest w najmniejszym stopniu zajęta, \textcolor{green}{ale w jej kolejce znajduje się już jakiś proces (w ten sposób unikamy sytuacji, w której jeden duży turysta wsiada na łódź i nikt nie chce się do niego dosiąść). Puste łodzie są rozważane w drugiej kolejności.} Ponieważ wyznaczanie zajętości wymaga kilku obliczeń, proces ogranicza sobie zbiór kandydatów do tych, które, (również według obecnej, niekoniecznie aktualnej wiedzy), znajdują się w porcie i mają jeszcze wolne miejsca (lista LIST\_SUBMAR). Jeśli takich łodzi nie ma, czeka na sygnał RETURN\_SUBMAR.
+\end{frame}
+
+\begin{frame}{CHOOSE\_SUBMAR c.d.}
+    \internallinenumbers
+    \resetlinenumber[1]
     Po wybraniu łodzi podwodnej proces wysyła do pozostałych wiadomość REQ\_SUBMAR\{id\_wybranej\_łodzi\}, dodaje się do kolejki QUEUE\_SUBMAR\{id\_wybranej\_łodzi\} i przechodzi do stanu WAIT\_SUBMAR.
 \end{frame}
 
@@ -317,7 +321,14 @@
     Proces w tym stanie zajął miejsca w łodzi podwodnej i czeka na rozpoczęcie wyprawy.
 
     \vspace{0.4cm}
-    Jeśli proces został kapitanem czeka na otrzymanie wiadomości, że łódź jest pełna. Po otrzymaniu tej informacji, wyznacza na podstawie kolejki, które procesy z nim płyną i wysyła do każdego z nich zapytanie TRAVEL\_READY (ma ono na celu zweryfikowanie czy wszyscy już wsiedli), po czym czeka, aż każdy z nich mu odpowie ACK\_TRAVEL. Po otrzymaniu zgód wysyła do nich wiadomość DEPART\_SUBMAR, informując je, że wszyscy są gotowi i można wyruszać. Ponownie czeka na potwierdzenie ACK\_TRAVEL. Po ich otrzymaniu przechodzi do stanu TRAVEL.
+    Jeśli proces został kapitanem czeka na otrzymanie wiadomości, że łódź jest pełna.
+    \textcolor{green}{Może jednak zdarzyć się, że taka wiadomość nigdy nie nadejdzie. Będzie to miało miejsce, gdy procesy posiadające strój kucyka wybiorą łodzie w taki sposób, że żadna nie zostanie przepełniona. Kapitan może wykryć taką sytuację, jeśli po otrzymaniu każdej z wiadomości REQ\_SUBMAR i dodaniu jej nadawcy do odpowiedniej kolejki będzie sprawdzał czy łączna liczba procesów w kolejkach QUEUE\_SUBMAR (czyli liczba turystów na łodziach) jest równa min(liczba strojów kucyka (PONY\_NO), liczba procesów (TOURIST\_NO)).}
+\end{frame}
+
+\begin{frame}{BOARDED - c.d.}
+    \internallinenumbers
+    \resetlinenumber[1]
+    \textcolor{green}{Kiedy kapitan otrzyma informację, że łódź jest pełna lub ustali, że wszyscy już wsiedli i taka wiadomość nigdy nie przyjdzie} wyznacza na podstawie kolejki, które procesy z nim płyną i wysyła do każdego z nich zapytanie TRAVEL\_READY (ma ono na celu zweryfikowanie czy wszyscy już wsiedli), po czym czeka, aż każdy z nich mu odpowie ACK\_TRAVEL. Po otrzymaniu zgód wysyła do nich wiadomość DEPART\_SUBMAR, informując je, że wszyscy są gotowi i można wyruszać. Ponownie czeka na potwierdzenie ACK\_TRAVEL. Po ich otrzymaniu przechodzi do stanu TRAVEL.
 \end{frame}
 
 \begin{frame}{BOARDED - c.d.}
