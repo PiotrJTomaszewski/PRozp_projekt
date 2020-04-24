@@ -138,7 +138,15 @@
         \item [RETURN\_SUBMAR\{id\_łodzi, liczba\_pasażerów\}] informacja, że łódź o podanym id i wioząca podaną liczbę pasażerów wróciła do portu. Dla procesów, które płynęły tą łodzią oznacza to rozkaz zwolnienia zasobów (opuszczenia jej), dla ogółu procesów, że można usunąć z kolejki podaną drugim parametrem liczbę procesów.
         \item [TRAVEL\_READY] weryfikacja czy można rozpocząć podróż łodzi podwodnej.
         \item [ACK\_TRAVEL] odpowiedź na zapytania kapitana.
+    \end{description}
+\end{frame}
+
+\begin{frame}{Wiadomości c.d.}
+    \internallinenumbers
+    \resetlinenumber[1]
+    \begin{description}
         \item [DEPART\_SUBMAR] informacja, że łódź, w której dany proces przebywa właśnie wypływa z portu.
+        \item [\textcolor{green}{DEPART\_SUBMAR\_NOT\_FULL}] \textcolor{green}{informacja, że łódź, w której dany proces przebywa właśnie wypływa z portu nie do końca zapełniona. Proces, który otrzyma tę wiadomość będzie mógł oznaczyć wszystkie łodzie, w których kolejce ktoś się znajduje jako niedostępne.}
     \end{description}
 \end{frame}
 
@@ -153,7 +161,7 @@
         \item [WAIT\_SUBMAR] Proces ubiega się o dostęp do sekcji krytycznej - o miejsce na łodzi podwodnej.
         \item [BOARDED] Proces zajął miejsce na łodzi podwodnej i czeka na rozpoczęcie wyprawy.
         \item [TRAVEL] Proces podróżuje łodzią podwodną.
-        \item [ON\_SHORE] Proes zakończył podróż, wysiadł z łodzi podwodnej (zwolnił zasób) i zamierza oddać (zwolnić) strój kucyka.
+        \item [ON\_SHORE] Proces zakończył podróż, wysiadł z łodzi podwodnej (zwolnił zasób) i zamierza oddać (zwolnić) strój kucyka.
     \end{description}
 
 \end{frame}
@@ -189,6 +197,7 @@
         \item [TRAVEL\_READY] niemożliwe, ignoruje.
         \item [ACK\_TRAVEL] niemożliwe, ignoruje.
         \item [DEPART\_SUBMAR] niemożliwe, ignoruje.
+        \item [\textcolor{green}{DEPART\_SUBMAR\_NOT\_FULL}] \textcolor{green}{niemożliwe, ignoruje.}
     \end{description}
 \end{frame}
 
@@ -224,6 +233,7 @@
         \item [TRAVEL\_READY] niemożliwe, ignoruje.
         \item [ACK\_TRAVEL] niemożliwe, ignoruje.
         \item [DEPART\_SUBMAR] niemożliwe, ignoruje.
+        \item [\textcolor{green}{DEPART\_SUBMAR\_NOT\_FULL}] \textcolor{green}{niemożliwe, ignoruje.}
     \end{description}
 \end{frame}
 
@@ -233,7 +243,7 @@
     Proces znajduje się w tym stanie, gdy ma już strój kucyka, ale nie wybrał sobie jeszcze łodzi.
 
     \vspace{0.4cm}
-    Proces wybiera łódź podwodną. Będzie starał się wybrać taką, która według jego obecnej wiedzy jest w najmniejszym stopniu zajęta, \textcolor{green}{ale w jej kolejce znajduje się już jakiś proces (w ten sposób unikamy sytuacji, w której jeden duży turysta wsiada na łódź i nikt nie chce się do niego dosiąść). Puste łodzie są rozważane w drugiej kolejności.} Ponieważ wyznaczanie zajętości wymaga kilku obliczeń, proces ogranicza sobie zbiór kandydatów do tych, które, (również według obecnej, niekoniecznie aktualnej wiedzy), znajdują się w porcie i mają jeszcze wolne miejsca (lista LIST\_SUBMAR). Jeśli takich łodzi nie ma, czeka na sygnał RETURN\_SUBMAR.
+    Proces wybiera łódź podwodną. Będzie starał się wybrać taką, która według jego obecnej wiedzy jest w najmniejszym stopniu zajęta, \textcolor{green}{ale w jej kolejce znajduje się już jakiś proces (w ten sposób unikamy sytuacji, w której jeden duży turysta wsiada na łódź i nikt nie chce się do niego dosiąść). Puste łodzie są rozważane w drugiej kolejności.} Ponieważ wyznaczanie zajętości wymaga kilku obliczeń, proces ogranicza sobie zbiór kandydatów do tych, które, (również według obecnej, niekoniecznie aktualnej wiedzy), znajdują się w porcie i mają jeszcze wolne miejsca (lista LIST\_SUBMAR). \textcolor{green}{Jeśli kilka łodzi jest w tym samym stopniu interesująca, proces wybiera tę o najniższym id.} Jeśli takich łodzi nie ma, czeka na sygnał RETURN\_SUBMAR.
 \end{frame}
 
 \begin{frame}{CHOOSE\_SUBMAR c.d.}
@@ -264,6 +274,7 @@
         \item [TRAVEL\_READY] niemożliwe, ignoruje.
         \item [ACK\_TRAVEL] niemożliwe, ignoruje.
         \item [DEPART\_SUBMAR] niemożliwe, ignoruje.
+        \item [\textcolor{green}{DEPART\_SUBMAR\_NOT\_FULL}] \textcolor{green}{niemożliwe, ignoruje.}
     \end{description}
 \end{frame}
 
@@ -312,6 +323,7 @@
         \item [TRAVEL\_READY] kolejkuje odpowiedź. Odpowiedzi udzieli po przejściu do stanu STATE\_BOARDED, o ile nie zmieni łodzi.
         \item [ACK\_TRAVEL] niemożliwe, ignoruje.
         \item [DEPART\_SUBMAR] niemożliwe, ignoruje.
+        \item [\textcolor{green}{DEPART\_SUBMAR\_NOT\_FULL}] \textcolor{green}{niemożliwe, ignoruje.}
     \end{description}
 \end{frame}
 
@@ -322,20 +334,20 @@
 
     \vspace{0.4cm}
     Jeśli proces został kapitanem czeka na otrzymanie wiadomości, że łódź jest pełna.
-    \textcolor{green}{Może jednak zdarzyć się, że taka wiadomość nigdy nie nadejdzie. Będzie to miało miejsce, gdy procesy posiadające strój kucyka wybiorą łodzie w taki sposób, że żadna nie zostanie przepełniona. Kapitan może wykryć taką sytuację, jeśli po otrzymaniu każdej z wiadomości REQ\_SUBMAR i dodaniu jej nadawcy do odpowiedniej kolejki będzie sprawdzał czy łączna liczba procesów w kolejkach QUEUE\_SUBMAR (czyli liczba turystów na łodziach) jest równa min(liczba strojów kucyka (PONY\_NO), liczba procesów (TOURIST\_NO)).}
+    \textcolor{green}{Może jednak zdarzyć się, że taka wiadomość nigdy nie nadejdzie. Będzie to miało miejsce, gdy procesy wybiorą łodzie w taki sposób, że żadna nie zostanie przepełniona. Kapitan może wykryć taką sytuację, jeśli po otrzymaniu każdej z wiadomości REQ\_SUBMAR i dodaniu jej nadawcy do odpowiedniej kolejki będzie sprawdzał czy wszystkie łodzie są w portach (LIST\_SUBMAR) oraz łączna liczba procesów w kolejkach QUEUE\_SUBMAR (czyli liczba turystów na łodziach) jest równa min\{liczba strojów kucyka (PONY\_NO), liczba procesów (TOURIST\_NO)\}.}
 \end{frame}
 
 \begin{frame}{BOARDED - c.d.}
     \internallinenumbers
     \resetlinenumber[1]
-    \textcolor{green}{Kiedy kapitan otrzyma informację, że łódź jest pełna lub ustali, że wszyscy już wsiedli i taka wiadomość nigdy nie przyjdzie} wyznacza na podstawie kolejki, które procesy z nim płyną i wysyła do każdego z nich zapytanie TRAVEL\_READY (ma ono na celu zweryfikowanie czy wszyscy już wsiedli), po czym czeka, aż każdy z nich mu odpowie ACK\_TRAVEL. Po otrzymaniu zgód wysyła do nich wiadomość DEPART\_SUBMAR, informując je, że wszyscy są gotowi i można wyruszać. Ponownie czeka na potwierdzenie ACK\_TRAVEL. Po ich otrzymaniu przechodzi do stanu TRAVEL.
+    \textcolor{green}{Kiedy kapitan otrzyma informację, że łódź jest pełna lub ustali, że taka wiadomość nigdy nie przyjdzie} wyznacza na podstawie kolejki, które procesy z nim płyną i wysyła do każdego z nich zapytanie TRAVEL\_READY (ma ono na celu zweryfikowanie czy wszyscy już wsiedli), po czym czeka, aż każdy z nich mu odpowie ACK\_TRAVEL. Po otrzymaniu zgód wysyła do nich wiadomość DEPART\_SUBMAR \textcolor{green}{jeśli łódz odpływa zapełniona, albo DEPRAT\_SUBMAR\_NOT\_FULL w przeciwnym wypadku}, informując je, że wszyscy są gotowi i można wyruszać. Ponownie czeka na potwierdzenie ACK\_TRAVEL. Po ich otrzymaniu przechodzi do stanu TRAVEL.
 \end{frame}
 
 \begin{frame}{BOARDED - c.d.}
     \internallinenumbers
     \resetlinenumber[1]
     Pozostałe procesy czekają na pytanie TRAVEL\_READY. Odpowiadają na nie ACK\_TRAVEL. Jeżeli to zapytanie uzyskał jeszcze w poprzednim stanie i nie zmienił w tym czasie łodzi, to teraz na nie odpowiada. \\
-    Następnie proces czeka na DEPART\_SUBMAR. Po otrzymaniu wiadomości odpowiada ACK\_TRAVEL i przechodzi do stanu TRAVEL.
+    Następnie proces czeka na DEPART\_SUBMAR \textcolor{green}{albo DEPART\_SUBMAR\_NOT\_FULL}. Po otrzymaniu DEPART\_SUBMAR odpowiada ACK\_TRAVEL i przechodzi do stanu TRAVEL. \textcolor{green}{Jeśli jednak otrzymał drugi wariant, oznacza wszystkie łodzie, w których kolejce ktoś przebywa jako niedostępne (za wyjątkiem łodzi, w której jest on sam - nie musi jej oznaczać, bo zanim będzie musiał ponownie dokonać wyboru łodzi, będzie musiał uprzednio opuścić tę łódź). Po czym odpowiada ACK\_TRAVEL i przechodzi do stanu TRAVEL.}
 \end{frame}
 
 \begin{frame}{BOARDED - odpowiedzi}
@@ -359,7 +371,15 @@
         \item [RETURN\_SUBMAR\{id\_łodzi, liczba\_pasażerów\}] oznacza łódź jako dostępną (LIST\_SUBMAR) oraz usuwa pierwsze liczba\_pasażerów pozycji z kolejki QUEUE\_SUBMAR\{id\_łodzi\}.
         \item [TRAVEL\_READY] odpowiada ACK\_TRAVEL.
         \item [ACK\_TRAVEL] jeśli jest kapitanem: postępuje według kroków opisanych wcześniej. Jeśli nie jest kapitanem, wiadomość niemożliwa, ignoruje.
-        \item [DEPART\_SUBMAR] Odpowiada ACK\_TRAVEL i przechodzi do stanu TRAVEL.
+    \end{description}
+\end{frame}
+
+\begin{frame}{BOARDED - odpowiedzi c.d.}
+    \internallinenumbers
+    \resetlinenumber[1]
+    \begin{description}
+        \item [DEPART\_SUBMAR] odpowiada ACK\_TRAVEL i przechodzi do stanu TRAVEL.
+        \item [\textcolor{green}{DEPART\_SUBMAR\_NOT\_FULL}] \textcolor{green}{oznacza na LIST\_SUBMAR wszystkie łodzie, w których kolejce QUEUE\_SUBMAR znajduje się jakiś proces (z wyjątkiem swojej własnej) jako niedostępne, odpowiada ACK\_TRAVEL i przechodzi do stanu TRAVEL.}
     \end{description}
 \end{frame}
 
@@ -402,7 +422,15 @@
         \item [RETURN\_SUBMAR\{id\_łodzi, liczba\_pasażerów\}] oznacza łódź jako dostępną (LIST\_SUBMAR) oraz usuwa pierwsze liczba\_pasażerów pozycji z kolejki QUEUE\_SUBMAR\{id\_łodzi\}. Jeśli płynie tą łodzią, to dodatkowo zwalnia miejsce na łodzi, odpowiada ACK\_TRAVEL i przechodzi do stanu ON\_SHORE.
         \item [TRAVEL\_READY] niemożliwe, ignoruje.
         \item [ACK\_TRAVEL] jeśli jest kapitanem: postępuje według kroków opisanych wcześniej. Jeśli nie jest kapitanem, wiadomość niemożliwa, ignoruje.
+    \end{description}
+\end{frame}
+
+\begin{frame}{TRAVEL - odpowiedzi c.d.}
+    \internallinenumbers
+    \resetlinenumber[1]
+    \begin{description}
         \item [DEPART\_SUBMAR] niemożliwe, ignoruje.
+        \item [\textcolor{green}{DEPART\_SUBMAR\_NOT\_FULL}] \textcolor{green}{niemożliwe, ignoruje.}
     \end{description}
 \end{frame}
 
@@ -436,6 +464,7 @@
         \item [TRAVEL\_READY] niemożliwe, ignoruje.
         \item [ACK\_TRAVEL] niemożliwe, ignoruje.
         \item [DEPART\_SUBMAR] niemożliwe, ignoruje.
+        \item [\textcolor{green}{DEPART\_SUBMAR\_NOT\_FULL}] \textcolor{green}{niemożliwe, ignoruje.}
     \end{description}
 \end{frame}
 
