@@ -5,7 +5,7 @@
 
 #include "system_info.h"
 
-enum States {
+typedef enum States {
     RESTING,
     WAIT_PONY,
     CHOOSE_SUBMAR,
@@ -13,8 +13,7 @@ enum States {
     BOARDED,
     TRAVEL,
     ON_SHORE
-};
-typedef enum States state_t;
+} state_t;
 
 typedef struct Tourist {
     int id;
@@ -30,10 +29,10 @@ typedef struct Tourist {
     int max_try_no;
     bool *list_submar;
 
-};
+} tourist_t;
 
-bool init_tourist(struct Tourist *tourist, struct SystemInfo *info);
+bool init_tourist(tourist_t *tourist, struct SystemInfo *info);
 
-bool finalize_tourist(struct Tourist *tourist);
+bool destory_tourist(tourist_t *tourist, struct SystemInfo *info);
 
 #endif

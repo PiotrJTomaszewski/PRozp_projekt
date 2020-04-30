@@ -10,10 +10,10 @@ typedef struct SystemInfo { // TODO: Consider using const
     int submar_no;
     int *dict_tourist_sizes;
     int *dict_submar_capacity;
-};
+} system_info_t;
 
-bool init_systeminfo(struct SystemInfo *system_info);
+bool init_systeminfo(system_info_t *system_info);
 
-void finalize_systeminfo(struct SystemInfo *system_info);
+void destroy_systeminfo(system_info_t *system_info);
 
 #endif
