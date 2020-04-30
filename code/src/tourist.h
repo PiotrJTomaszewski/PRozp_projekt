@@ -15,6 +15,11 @@ typedef enum States {
     ON_SHORE
 } state_t;
 
+const char *stateNames[] = {
+    "RESTING", "WAIT_PONY", "CHOOSE_SUBMAR", 
+    "WAIT_SUBMAR", "BOARDED", "TRAVEL", "ON_SHORE" 
+};
+
 typedef struct Tourist {
     int id;
     state_t state;
