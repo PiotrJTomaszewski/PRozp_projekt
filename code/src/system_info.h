@@ -14,6 +14,6 @@ typedef struct SystemInfo { // TODO: Consider using const
 
 bool init_systeminfo(system_info_t *system_info);
 
-void destroy_systeminfo(system_info_t *system_info);
+bool destroy_systeminfo(struct SystemInfo *system_info);
 
 #endif

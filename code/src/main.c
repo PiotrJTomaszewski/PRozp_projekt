@@ -39,44 +39,44 @@ bool init_all(system_info_t *sys_info, tourist_t *tourist, int argc, char **argv
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
     if (!check_thread_support(provided)) {
         puts("Error Not enough thread support");
-        return false;
+        return true;
     }
     MPI_Comm_size(MPI_COMM_WORLD, &sys_info->tourist_no);
-    if (!init_systeminfo(sys_info)) {
+    if (init_systeminfo(sys_info)) {
         puts("Error while initializing system info");
-        return false;
+        return true;
     }
     MPI_Comm_rank(MPI_COMM_WORLD, &tourist->id);
-    if (!init_tourist(tourist, sys_info)) {
+    if (init_tourist(tourist, sys_info)) {
         puts("Error while initializng tourist");
-        return false;
+        return true;
     }
-    return true;
+    return false;
 }
 
 bool finalize_all(system_info_t *sys_info, tourist_t *tourist) {
     MPI_Finalize();
+    destroy_tourist(tourist, sys_info);
     destroy_systeminfo(sys_info);
-    destory_tourist(tourist, sys_info);
     free(sys_info);
     free(tourist);
+    return false;
 }
 
 int main(int argc, char **argv) {
-    MPI_Status status;
-    volatile system_info_t *sys_info = malloc(sizeof(struct SystemInfo));
-    volatile tourist_t *tourist = malloc(sizeof(struct Tourist));
-    if (!init_all(sys_info, tourist, &argc, &argv)) {
+    system_info_t *sys_info = malloc(sizeof(system_info_t));
+    tourist_t *tourist = malloc(sizeof(tourist_t));
+    if (init_all(sys_info, tourist, argc, argv)) {
         puts("An error occured, leaving");
         finalize_all(sys_info, tourist);
         exit(-1);
     }
     
     pthread_t comm_thread_id;
-    thread_data_t thread_data = {sys_info, tourist};
+    thread_data_t thread_data = {tourist, sys_info};
     pthread_create(&comm_thread_id, NULL, communication_loop, &thread_data);
 
-    main_loop();
+    main_loop(tourist, sys_info);
 
     finalize_all(sys_info, tourist);
     return 0;

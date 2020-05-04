@@ -3,6 +3,8 @@
 
 #include <mpi.h>
 
+#include "tourist.h"
+
 typedef enum MessageType {
     REQ_PONY,
     ACK_PONY,
@@ -19,12 +21,22 @@ typedef enum MessageType {
 
 typedef struct Packet {
     msg_t type;
+    int lamport_clock;
     int submar_id;
     int passenger_no;
 } packet_t;
 
-inline void send_packet(packet_t *packet, int dest_id);
+typedef struct ReceivedMsgData {
+    packet_t msg_packet;
+    MPI_Status status;
+} received_msg_data_t;
 
-inline MPI_Status recv_packet(packet_t *packet);
+// Lamport clock is set automatically
+void send_packet(tourist_t *tourist, packet_t *packet, int dest_id);
+
+// Lamport clock is set automatically
+void broadcast_packet(tourist_t *tourist, packet_t *packet, int tourist_no);
+
+MPI_Status recv_packet(tourist_t *tourist, packet_t *packet);
 
 #endif

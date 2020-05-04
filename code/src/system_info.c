@@ -1,6 +1,7 @@
 #include "system_info.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 bool init_systeminfo(struct SystemInfo *system_info) {
     // TODO: Read those values from a file so we can calculate submar_no based on submar_capacity etc.
@@ -17,11 +18,11 @@ bool init_systeminfo(struct SystemInfo *system_info) {
     memcpy(system_info->dict_tourist_sizes, a, system_info->tourist_no);
     int b[] = SUBMAR_CAPACITY;
     memcpy(system_info->dict_submar_capacity, b, system_info->submar_no);
-    return true;
+    return false;
 }
 
-void finalize_systeminfo(struct SystemInfo *system_info) {
+bool destroy_systeminfo(struct SystemInfo *system_info) {
     free(system_info->dict_tourist_sizes);
     free(system_info->dict_submar_capacity);
-    return true;
+    return false;
 }

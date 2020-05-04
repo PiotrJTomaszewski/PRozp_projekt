@@ -4,34 +4,95 @@
 #include "tourist.h"
 #include "system_info.h"
 
+const char *stateNames[] = {
+    "RESTING", "WAIT_PONY", "CHOOSE_SUBMAR", 
+    "WAIT_SUBMAR", "BOARDED", "TRAVEL", "ON_SHORE" 
+};
+
 bool init_tourist(tourist_t *tourist, system_info_t *info) {
+    bool error_occurred = false;
     tourist->lamport_clock = 0;
+    error_occurred |= pthread_mutex_init(&(tourist->lamport_mutex), NULL);
     tourist->state = RESTING;
+    error_occurred |= pthread_mutex_init((&tourist->state_mutex), NULL);
+    tourist->rec_ack_no = 1; // Tourist always have his own approval
+    error_occurred |= pthread_cond_init((&tourist->condition), NULL);
+    error_occurred |= pthread_mutex_init((&tourist->cond_mutex), NULL);
+
     tourist->queue_pony = calloc(info->tourist_no, sizeof tourist->queue_pony);
-    if (tourist->queue_pony == NULL)
-        return false;
+    error_occurred |= (tourist->queue_pony == NULL);
     tourist->queue_pony_head = 0;
 
     tourist->queue_submar = malloc(info->submar_no * sizeof tourist->queue_submar);
-    if (tourist->queue_submar == NULL)
-        return false;
+    error_occurred |= (tourist->queue_submar == NULL);
     for (int i=0; i<info->submar_no; i++) {
         tourist->queue_submar[i] = calloc(info->tourist_no, sizeof tourist->id);
-        if (tourist->queue_submar[i] == NULL)
-            return false;
+        error_occurred |= (tourist->queue_submar[i] == NULL);
     }
     tourist->queue_submar_head = calloc(info->submar_no, sizeof tourist->queue_submar_head);
-    if (tourist->queue_submar_head == NULL)
-        return false;
-    return true;
+    error_occurred |= (tourist->queue_submar_head == NULL);
+
+    tourist->list_submar = calloc(info->submar_no, sizeof(bool));
+    error_occurred |= (tourist->list_submar == NULL);
+    return error_occurred;
 }
 
 
-bool finalize_tourist(tourist_t *tourist, system_info_t *info) {
+bool destroy_tourist(tourist_t *tourist, system_info_t *info) {
     free(tourist->queue_pony);
     free(tourist->queue_submar_head);
     for (int i=0; i<info->submar_no; i++) {
         free(tourist->queue_submar[i]);
     }
     free(tourist->queue_submar);
+    pthread_mutex_destroy(&(tourist->lamport_mutex)); // TODO: Check for errors
+    pthread_mutex_destroy(&(tourist->state_mutex));
+    pthread_cond_destroy(&(tourist->condition));
+    pthread_mutex_destroy(&(tourist->cond_mutex));
+    return false;
+}
+
+void change_state(tourist_t *tourist, state_t new_state) {
+    pthread_mutex_lock(&(tourist->state_mutex));
+    tourist->state = new_state;
+    pthread_mutex_unlock(&(tourist->state_mutex));
+}
+
+int get_best_submarine(tourist_t *tourist, system_info_t *info) {
+    int submar_cap;
+    int left_submar_cap;
+    int empty_submar_id = -1;
+    int best_submar_id = -1;
+    double current_submar_cap_taken;
+    double best_submar_cap_taken = 1.f;
+    /* Going in reverse because we want to get the submarine with the lowest id
+    and this way we don't have to make extra checks on empty boats*/
+    for (int submar_id=info->submar_no-1; submar_id>=0; submar_id--) {
+        if (tourist->list_submar[submar_id])
+            continue;
+        submar_cap = info->dict_submar_capacity[submar_id];
+        if (tourist->queue_submar_head[submar_id] > 0) {
+            left_submar_cap = info->dict_submar_capacity[submar_id];
+            for (int i=0; i<tourist->queue_submar_head[submar_id]; i++) {
+                left_submar_cap -= tourist->queue_submar[submar_id][i];
+            }
+            if (left_submar_cap >= 0) {
+                current_submar_cap_taken = (double)(left_submar_cap) / submar_cap;
+                if (current_submar_cap_taken < best_submar_cap_taken) {
+                    best_submar_cap_taken = current_submar_cap_taken;
+                    best_submar_id = submar_id;
+                }
+            }
+        } else { // Empty boat
+            empty_submar_id = submar_id;
+        }
+    }
+    if (best_submar_id == -1) best_submar_id = empty_submar_id;
+    return best_submar_id;
+}
+
+void wait_for_signal(tourist_t *tourist) {
+    pthread_mutex_lock(&(tourist->cond_mutex));
+    pthread_cond_wait(&(tourist->condition), &(tourist->cond_mutex));
+    pthread_mutex_unlock(&(tourist->cond_mutex));
 }
