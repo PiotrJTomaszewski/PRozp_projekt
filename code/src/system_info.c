@@ -18,6 +18,8 @@ bool init_systeminfo(struct SystemInfo *system_info) {
     memcpy(system_info->dict_tourist_sizes, a, system_info->tourist_no);
     int b[] = SUBMAR_CAPACITY;
     memcpy(system_info->dict_submar_capacity, b, system_info->submar_no);
+
+    system_info->max_try_no = 3;
     return false;
 }
 

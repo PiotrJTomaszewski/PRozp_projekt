@@ -28,13 +28,15 @@ typedef struct Tourist {
     int queue_pony_head; // The next index // VOLATILE
     int **queue_submar; // VOLATILE
     int *queue_submar_head; // The next index for all of the submarines // VOLATILE
-    int try_no; // VOLATILE
-    int max_try_no;
+    int my_submarine;
+    int try_no;
     bool *list_submar;  // False if waiting, True if in travel // VOLATILE
     pthread_mutex_t state_mutex;
     pthread_mutex_t lamport_mutex;
-    pthread_cond_t condition;
-    pthread_mutex_t cond_mutex;
+    pthread_cond_t general_cond;
+    pthread_mutex_t general_cond_mutex;
+    pthread_cond_t rec_ack_cond;
+    pthread_mutex_t rec_ack_mutex;
 } tourist_t;
 
 bool init_tourist(tourist_t *tourist, system_info_t *info);
@@ -45,6 +47,10 @@ void change_state(tourist_t *tourist, state_t new_state);
 
 int get_best_submarine(tourist_t *tourist, system_info_t *info);
 
-void wait_for_signal(tourist_t *tourist);
+void wait_for_general_signal(tourist_t *tourist);
+
+void wait_for_rec_ack_signal(tourist_t *tourist);
+
+bool can_board(tourist_t *tourist, system_info_t *info);
 
 #endif

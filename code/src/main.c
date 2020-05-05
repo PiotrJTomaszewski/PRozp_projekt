@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
         finalize_all(sys_info, tourist);
         exit(-1);
     }
-    
+
     pthread_t comm_thread_id;
     thread_data_t thread_data = {tourist, sys_info};
     pthread_create(&comm_thread_id, NULL, communication_loop, &thread_data);

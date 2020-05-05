@@ -8,6 +8,7 @@ typedef struct SystemInfo { // TODO: Consider using const
     int pony_no;
     int tourist_no;
     int submar_no;
+    int max_try_no;
     int *dict_tourist_sizes;
     int *dict_submar_capacity;
 } system_info_t;

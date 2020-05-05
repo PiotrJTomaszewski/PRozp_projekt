@@ -16,13 +16,17 @@ bool init_tourist(tourist_t *tourist, system_info_t *info) {
     tourist->state = RESTING;
     error_occurred |= pthread_mutex_init((&tourist->state_mutex), NULL);
     tourist->rec_ack_no = 1; // Tourist always have his own approval
-    error_occurred |= pthread_cond_init((&tourist->condition), NULL);
-    error_occurred |= pthread_mutex_init((&tourist->cond_mutex), NULL);
+    error_occurred |= pthread_cond_init((&tourist->general_cond), NULL);
+    error_occurred |= pthread_mutex_init((&tourist->general_cond_mutex), NULL);
+
+    error_occurred |= pthread_cond_init((&tourist->rec_ack_cond), NULL);
+    error_occurred |= pthread_mutex_init((&tourist->rec_ack_mutex), NULL);
 
     tourist->queue_pony = calloc(info->tourist_no, sizeof tourist->queue_pony);
     error_occurred |= (tourist->queue_pony == NULL);
     tourist->queue_pony_head = 0;
 
+    tourist->my_submarine = -1;
     tourist->queue_submar = malloc(info->submar_no * sizeof tourist->queue_submar);
     error_occurred |= (tourist->queue_submar == NULL);
     for (int i=0; i<info->submar_no; i++) {
@@ -47,8 +51,8 @@ bool destroy_tourist(tourist_t *tourist, system_info_t *info) {
     free(tourist->queue_submar);
     pthread_mutex_destroy(&(tourist->lamport_mutex)); // TODO: Check for errors
     pthread_mutex_destroy(&(tourist->state_mutex));
-    pthread_cond_destroy(&(tourist->condition));
-    pthread_mutex_destroy(&(tourist->cond_mutex));
+    pthread_cond_destroy(&(tourist->general_cond));
+    pthread_mutex_destroy(&(tourist->general_cond_mutex));
     return false;
 }
 
@@ -74,7 +78,8 @@ int get_best_submarine(tourist_t *tourist, system_info_t *info) {
         if (tourist->queue_submar_head[submar_id] > 0) {
             left_submar_cap = info->dict_submar_capacity[submar_id];
             for (int i=0; i<tourist->queue_submar_head[submar_id]; i++) {
-                left_submar_cap -= tourist->queue_submar[submar_id][i];
+                int tourist_id = tourist->queue_submar[submar_id][i];
+                left_submar_cap -= info->dict_tourist_sizes[tourist_id];
             }
             if (left_submar_cap >= 0) {
                 current_submar_cap_taken = (double)(left_submar_cap) / submar_cap;
@@ -91,8 +96,25 @@ int get_best_submarine(tourist_t *tourist, system_info_t *info) {
     return best_submar_id;
 }
 
-void wait_for_signal(tourist_t *tourist) {
-    pthread_mutex_lock(&(tourist->cond_mutex));
-    pthread_cond_wait(&(tourist->condition), &(tourist->cond_mutex));
-    pthread_mutex_unlock(&(tourist->cond_mutex));
+void wait_for_general_signal(tourist_t *tourist) {
+    pthread_mutex_lock(&(tourist->general_cond_mutex));
+    pthread_cond_wait(&(tourist->general_cond), &(tourist->general_cond_mutex));
+    pthread_mutex_unlock(&(tourist->general_cond_mutex));
+}
+
+void wait_for_rec_ack_signal(tourist_t *tourist) {
+    pthread_mutex_lock(&(tourist->rec_ack_mutex));
+    pthread_cond_wait(&(tourist->rec_ack_cond), &(tourist->rec_ack_mutex));
+    pthread_mutex_unlock(&(tourist->rec_ack_mutex));
+}
+
+bool can_board(tourist_t *tourist, system_info_t *info) {
+    int submar_id = tourist->my_submarine;
+    int space_left = info->dict_submar_capacity[submar_id];
+    int other_tourist_id;
+    for (int i=0; i<tourist->queue_submar_head[submar_id]; i++) {
+        other_tourist_id = tourist->queue_submar[submar_id][i];
+        space_left -= info->dict_tourist_sizes[other_tourist_id];
+    }
+    return (space_left >= info->dict_tourist_sizes[tourist->id]);
 }
