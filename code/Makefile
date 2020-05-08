@@ -22,3 +22,4 @@ nanozombie: $(OBJ)
 .PHONY: clean
 clean:
 	rm $(OUTDIR)/*
+	rm logs/*
