@@ -39,4 +39,6 @@ void broadcast_packet(tourist_t *tourist, packet_t *packet, int tourist_no);
 
 MPI_Status recv_packet(tourist_t *tourist, packet_t *packet);
 
+void send_packet_to_travelling_with_me(tourist_t *tourist, packet_t *packet);
+
 #endif

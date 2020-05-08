@@ -20,6 +20,10 @@ bool init_systeminfo(struct SystemInfo *system_info) {
     memcpy(system_info->dict_submar_capacity, b, system_info->submar_no);
 
     system_info->max_try_no = 3;
+    system_info->min_rest_time = 1;
+    system_info->max_rest_time = 20;
+    system_info->min_travel_time = 3;
+    system_info->max_travel_time = 40;
     return false;
 }
 

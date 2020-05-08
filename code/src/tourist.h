@@ -5,6 +5,9 @@
 #include <pthread.h>
 
 #include "system_info.h"
+#include "stack.h"
+#include "shared_var.h"
+#include "cond_signal.h"
 
 typedef enum States {
     RESTING,
@@ -16,27 +19,34 @@ typedef enum States {
     ON_SHORE
 } state_t;
 
+typedef enum SubmarState {
+    AVAILABLE,
+    UNAVAILABLE
+} submar_state_t;
+
 extern const char *stateNames[];
 
 typedef struct Tourist {
     int id;
-    state_t state; // VOLATILE
-    int lamport_clock; // VOLATILE
-    int rec_ack_no; // VOLATILE
+    state_t state;
+    shared_int_t lamport_clock;
+    int rec_ack_no;
     // TODO: Consider smaller vars
-    int *queue_pony; // VOLATILE
-    int queue_pony_head; // The next index // VOLATILE
-    int **queue_submar; // VOLATILE
-    int *queue_submar_head; // The next index for all of the submarines // VOLATILE
+    stack_t queue_pony; // volatile
+    stack_t *queues_submar; // A list of stacks
     int my_submarine;
+    shared_int_t is_my_submarine_full; // Volatile
     int try_no;
-    bool *list_submar;  // False if waiting, True if in travel // VOLATILE
+    submar_state_t *list_submar;
+    stack_t travelling_with_me;
     pthread_mutex_t state_mutex;
-    pthread_mutex_t lamport_mutex;
-    pthread_cond_t general_cond;
-    pthread_mutex_t general_cond_mutex;
-    pthread_cond_t rec_ack_cond;
-    pthread_mutex_t rec_ack_mutex;
+    pthread_mutex_t queue_pony_mutex;
+    cond_signal_t general_cond;
+    cond_signal_t rec_ack_cond;
+    cond_signal_t full_submar_cond;
+    cond_signal_t ack_travel_cond;
+    cond_signal_t travel_cond;
+    cond_signal_t end_travel_cond;
 } tourist_t;
 
 bool init_tourist(tourist_t *tourist, system_info_t *info);
@@ -47,10 +57,10 @@ void change_state(tourist_t *tourist, state_t new_state);
 
 int get_best_submarine(tourist_t *tourist, system_info_t *info);
 
-void wait_for_general_signal(tourist_t *tourist);
-
-void wait_for_rec_ack_signal(tourist_t *tourist);
-
 bool can_board(tourist_t *tourist, system_info_t *info);
+
+bool is_captain(tourist_t *tourist);
+
+void fill_travelling_with_me(tourist_t *tourist, system_info_t *info);
 
 #endif

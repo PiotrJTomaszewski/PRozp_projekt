@@ -7,6 +7,7 @@ typedef enum DebugMsgTypes {
     INFO_SENDING,
     INFO_RECEIVING,
     INFO_CHANGE_STATE,
+    INFO_WAITING,
     INFO_OTHER,
     ERROR_SENDING,
     ERROR_RECEIVING,

@@ -76,15 +76,15 @@ void handler_ack_pony(tourist_t *tourist, system_info_t *sys_info, received_msg_
                 debug_print(INFO_RECEIVING, tourist, "Received ACK_PONY, ignoring");
                 break;
             case WAIT_PONY:
-                pthread_mutex_lock(&(tourist->rec_ack_mutex));
+                pthread_mutex_lock(&(tourist->rec_ack_cond.mutex));
                 int needed_ack = sys_info->tourist_no - sys_info->pony_no;
                 if (needed_ack < 0) needed_ack = 0;
                 debug_printf(INFO_RECEIVING, tourist, "Received ACK_PONY, I have %d, need %d", tourist->rec_ack_no, needed_ack);
                 tourist->rec_ack_no++;
                 if (tourist->rec_ack_no == needed_ack) {
-                    pthread_cond_signal(&(tourist->rec_ack_cond));
+                    pthread_cond_signal(&(tourist->rec_ack_cond.cond));
                 }
-                pthread_mutex_unlock(&(tourist->rec_ack_mutex));
+                pthread_mutex_unlock(&(tourist->rec_ack_cond.mutex));
                 break;
             default:
                 debug_print(ERROR_RECEIVING, tourist, "Error, What?! I'm in a wrong state");
@@ -193,9 +193,7 @@ void handler_return_submar(tourist_t *tourist, system_info_t *sys_info, received
         case WAIT_PONY:
             break;
         case CHOOSE_SUBMAR:
-            pthread_mutex_lock(&(tourist->general_cond_mutex));
-            pthread_cond_signal(&(tourist->general_cond));
-            pthread_mutex_unlock(&(tourist->general_cond_mutex));
+            set_signal(&(tourist->general_cond));
             break;
         case WAIT_SUBMAR:
             break;

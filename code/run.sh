@@ -1,1 +1,1 @@
-mpirun -np 4 --oversubscribe nanozombie
+mpirun -np 3 --oversubscribe nanozombie

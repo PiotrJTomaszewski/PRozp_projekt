@@ -10,6 +10,8 @@
 #include "main_loop.h"
 #include "communication_loop.h"
 
+#define GDB 0
+
 bool check_thread_support(int provided) {
     switch (provided) {
         case MPI_THREAD_SINGLE: 
@@ -71,6 +73,11 @@ int main(int argc, char **argv) {
         finalize_all(sys_info, tourist);
         exit(-1);
     }
+
+    #if GDB
+        printf("PID: %d\n", getpid());
+        sleep(30);
+    #endif
 
     pthread_t comm_thread_id;
     thread_data_t thread_data = {tourist, sys_info};

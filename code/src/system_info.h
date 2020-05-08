@@ -11,6 +11,10 @@ typedef struct SystemInfo { // TODO: Consider using const
     int max_try_no;
     int *dict_tourist_sizes;
     int *dict_submar_capacity;
+    int min_rest_time;
+    int max_rest_time;
+    int min_travel_time;
+    int max_travel_time;
 } system_info_t;
 
 bool init_systeminfo(system_info_t *system_info);

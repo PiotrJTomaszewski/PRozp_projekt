@@ -3,6 +3,10 @@
 
 #include "tourist.h"
 #include "system_info.h"
+#include "stack.h"
+#include "shared_var.h"
+#include "debug.h"
+#include "cond_signal.h"
 
 const char *stateNames[] = {
     "RESTING", "WAIT_PONY", "CHOOSE_SUBMAR", 
@@ -11,48 +15,61 @@ const char *stateNames[] = {
 
 bool init_tourist(tourist_t *tourist, system_info_t *info) {
     bool error_occurred = false;
-    tourist->lamport_clock = 0;
-    error_occurred |= pthread_mutex_init(&(tourist->lamport_mutex), NULL);
+    
+    error_occurred |= init_shared_int(&(tourist->lamport_clock));
+    tourist->lamport_clock.value = 0;
+
+    error_occurred |= init_shared_int(&(tourist->is_my_submarine_full));
+    tourist->is_my_submarine_full.value = 0;
+
     tourist->state = RESTING;
-    error_occurred |= pthread_mutex_init((&tourist->state_mutex), NULL);
+    error_occurred |= pthread_mutex_init(&(tourist->state_mutex), NULL);
     tourist->rec_ack_no = 1; // Tourist always have his own approval
-    error_occurred |= pthread_cond_init((&tourist->general_cond), NULL);
-    error_occurred |= pthread_mutex_init((&tourist->general_cond_mutex), NULL);
 
-    error_occurred |= pthread_cond_init((&tourist->rec_ack_cond), NULL);
-    error_occurred |= pthread_mutex_init((&tourist->rec_ack_mutex), NULL);
+    error_occurred |= pthread_mutex_init(&(tourist->queue_pony_mutex), NULL);
 
-    tourist->queue_pony = calloc(info->tourist_no, sizeof tourist->queue_pony);
-    error_occurred |= (tourist->queue_pony == NULL);
-    tourist->queue_pony_head = 0;
+    error_occurred |= init_cond_signal(&(tourist->general_cond));
+    error_occurred |= init_cond_signal(&(tourist->rec_ack_cond));
+    error_occurred |= init_cond_signal(&(tourist->full_submar_cond));
+    error_occurred |= init_cond_signal(&(tourist->ack_travel_cond));
+    error_occurred |= init_cond_signal(&(tourist->travel_cond));
+    error_occurred |= init_cond_signal(&(tourist->end_travel_cond));
+
+    error_occurred |= stack_init(&(tourist->queue_pony), info->tourist_no);
 
     tourist->my_submarine = -1;
-    tourist->queue_submar = malloc(info->submar_no * sizeof tourist->queue_submar);
-    error_occurred |= (tourist->queue_submar == NULL);
+    tourist->queues_submar = malloc(info->submar_no * sizeof(stack_t));
+    error_occurred |= (tourist->queues_submar == NULL);
     for (int i=0; i<info->submar_no; i++) {
-        tourist->queue_submar[i] = calloc(info->tourist_no, sizeof tourist->id);
-        error_occurred |= (tourist->queue_submar[i] == NULL);
+        error_occurred |= stack_init(&(tourist->queues_submar[i]), info->tourist_no);
     }
-    tourist->queue_submar_head = calloc(info->submar_no, sizeof tourist->queue_submar_head);
-    error_occurred |= (tourist->queue_submar_head == NULL);
 
-    tourist->list_submar = calloc(info->submar_no, sizeof(bool));
+    error_occurred |= stack_init(&(tourist->travelling_with_me), info->tourist_no);
+
+    tourist->list_submar = calloc(info->submar_no, sizeof(submar_state_t));
     error_occurred |= (tourist->list_submar == NULL);
+
     return error_occurred;
 }
 
 
 bool destroy_tourist(tourist_t *tourist, system_info_t *info) {
-    free(tourist->queue_pony);
-    free(tourist->queue_submar_head);
+    stack_destroy(&(tourist->queue_pony));
     for (int i=0; i<info->submar_no; i++) {
-        free(tourist->queue_submar[i]);
+        stack_destroy(&(tourist->queues_submar[i]));
     }
-    free(tourist->queue_submar);
-    pthread_mutex_destroy(&(tourist->lamport_mutex)); // TODO: Check for errors
-    pthread_mutex_destroy(&(tourist->state_mutex));
-    pthread_cond_destroy(&(tourist->general_cond));
-    pthread_mutex_destroy(&(tourist->general_cond_mutex));
+    free(tourist->queues_submar);
+    destroy_shared_int(&(tourist->lamport_clock));
+    destroy_shared_int(&(tourist->is_my_submarine_full));
+    pthread_mutex_destroy(&(tourist->state_mutex)); // TODO: Check for errors
+    pthread_mutex_destroy(&(tourist->queue_pony_mutex));
+
+    destroy_cond_signal(&(tourist->general_cond));
+    destroy_cond_signal(&(tourist->rec_ack_cond));
+    destroy_cond_signal(&(tourist->full_submar_cond));
+    destroy_cond_signal(&(tourist->ack_travel_cond));
+    destroy_cond_signal(&(tourist->travel_cond));
+    destroy_cond_signal(&(tourist->end_travel_cond));
     return false;
 }
 
@@ -72,14 +89,13 @@ int get_best_submarine(tourist_t *tourist, system_info_t *info) {
     /* Going in reverse because we want to get the submarine with the lowest id
     and this way we don't have to make extra checks on empty boats*/
     for (int submar_id=info->submar_no-1; submar_id>=0; submar_id--) {
-        if (tourist->list_submar[submar_id])
+        if (tourist->list_submar[submar_id] == UNAVAILABLE)
             continue;
         submar_cap = info->dict_submar_capacity[submar_id];
-        if (tourist->queue_submar_head[submar_id] > 0) {
+        if ( stack_get_size(&(tourist->queues_submar[submar_id])) > 0) {
             left_submar_cap = info->dict_submar_capacity[submar_id];
-            for (int i=0; i<tourist->queue_submar_head[submar_id]; i++) {
-                int tourist_id = tourist->queue_submar[submar_id][i];
-                left_submar_cap -= info->dict_tourist_sizes[tourist_id];
+            for (int i=0; i<stack_get_size(&(tourist->queues_submar[submar_id])); i++) {
+                left_submar_cap -= info->dict_tourist_sizes[stack_get_value_at(&(tourist->queues_submar[submar_id]), i)];
             }
             if (left_submar_cap >= 0) {
                 current_submar_cap_taken = (double)(left_submar_cap) / submar_cap;
@@ -96,25 +112,32 @@ int get_best_submarine(tourist_t *tourist, system_info_t *info) {
     return best_submar_id;
 }
 
-void wait_for_general_signal(tourist_t *tourist) {
-    pthread_mutex_lock(&(tourist->general_cond_mutex));
-    pthread_cond_wait(&(tourist->general_cond), &(tourist->general_cond_mutex));
-    pthread_mutex_unlock(&(tourist->general_cond_mutex));
-}
-
-void wait_for_rec_ack_signal(tourist_t *tourist) {
-    pthread_mutex_lock(&(tourist->rec_ack_mutex));
-    pthread_cond_wait(&(tourist->rec_ack_cond), &(tourist->rec_ack_mutex));
-    pthread_mutex_unlock(&(tourist->rec_ack_mutex));
-}
-
 bool can_board(tourist_t *tourist, system_info_t *info) {
     int submar_id = tourist->my_submarine;
     int space_left = info->dict_submar_capacity[submar_id];
-    int other_tourist_id;
-    for (int i=0; i<tourist->queue_submar_head[submar_id]; i++) {
-        other_tourist_id = tourist->queue_submar[submar_id][i];
-        space_left -= info->dict_tourist_sizes[other_tourist_id];
+    for (int i=0; i<stack_get_size(&(tourist->queues_submar[submar_id])); i++) {
+        space_left -= info->dict_tourist_sizes[stack_get_value_at(&(tourist->queues_submar[submar_id]), i)];
     }
     return (space_left >= info->dict_tourist_sizes[tourist->id]);
+}
+
+bool is_captain(tourist_t *tourist) {
+    return (tourist->id == stack_get_value_at(&(tourist->queues_submar[tourist->my_submarine]), 0));
+}
+
+void fill_travelling_with_me(tourist_t *tourist, system_info_t *info) {
+    stack_clear(&(tourist->travelling_with_me));
+    int submar_id = tourist->my_submarine;
+    int submar_cap_left = info->dict_submar_capacity[submar_id];
+    int other_tourist_id, other_tourist_size;
+    for (int i=0; i<stack_get_size(&(tourist->queues_submar[submar_id])); i++) {
+        other_tourist_id = stack_get_value_at(&(tourist->queues_submar[submar_id]), i);
+        other_tourist_size = info->dict_tourist_sizes[other_tourist_id];
+        submar_cap_left -= other_tourist_size;
+        if (submar_cap_left >= 0) {
+            stack_push(&(tourist->travelling_with_me), other_tourist_id);
+        } else {
+            break; // The submarine is full
+        }
+    }
 }

@@ -5,10 +5,10 @@ CWARNINGFLAGS = -Wall -Wextra -Wpedantic
 SOURCEDIR = src
 OUTDIR = build
 
-_DEPS = communication_loop.h debug.h globals.h main_loop.h messages.h system_info.h tourist.h
+_DEPS = communication_loop.h cond_signal.h debug.h globals.h main_loop.h messages.h shared_var.h stack.h system_info.h tourist.h 
 DEPS = $(patsubst %,$(SOURCEDIR)/%,$(_DEPS))
 
-_OBJ = communication_loop.o debug.o main_loop.o messages.o system_info.o tourist.o main.o
+_OBJ = communication_loop.o cond_signal.o debug.o main_loop.o messages.o shared_var.o stack.o system_info.o tourist.o main.o
 OBJ = $(patsubst %,$(OUTDIR)/%,$(_OBJ))
 
 
