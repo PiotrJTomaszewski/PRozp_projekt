@@ -15,7 +15,7 @@ public:
 private:
     std::shared_ptr<Tourist> tourist;
     std::shared_ptr<SystemInfo> sys_info;
-    bool should_run;
+    bool run_flag;
     void handler_resting();
     void handler_wait_pony();
     void handler_choose_submar();

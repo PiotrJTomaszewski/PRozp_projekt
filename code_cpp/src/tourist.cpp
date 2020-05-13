@@ -4,6 +4,8 @@
 Tourist::Tourist(int id, int submarine_no) {
     this->id = id;
     submarine_queues = std::unique_ptr<QueuesSubmarine>(new QueuesSubmarine(submarine_no));
+    received_ack_no = 0;
+    is_ack_travel_queued = false;
 }
 
 Tourist::~Tourist() {
@@ -24,6 +26,14 @@ int Tourist::get_try_no() {
 
 void Tourist::set_try_no(int value) {
     try_no = value;
+}
+
+int Tourist::increment_received_ack_no() {
+    return received_ack_no++;
+}
+
+void Tourist::clear_received_ack_no() {
+    received_ack_no = 0;
 }
 
 int Tourist::get_best_submarine_id(SystemInfo &sys_info) {

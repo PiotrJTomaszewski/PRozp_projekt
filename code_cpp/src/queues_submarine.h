@@ -16,6 +16,7 @@ public:
     int safe_get_tourist_id(int submarine_id, int position);
     int safe_get_size(int submarine_id);
     void safe_remove_from_begin(int submarine_id, int number);
+    void safe_remove_tourist_id(int submarine_id, int tourist_id);
 
     void unsafe_push_back(int submarine_id, int tourist_id);
     int unsafe_get_tourist_id(int submarine_id, int position);

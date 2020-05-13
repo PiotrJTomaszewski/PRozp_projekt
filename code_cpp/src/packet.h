@@ -34,9 +34,11 @@ public:
     void broadcast(Tourist &me, int tourists_in_system);
     void receive(Tourist &me);
 
-    msg_t get_msessage_type();
+    msg_t get_message_type();
     int get_submarine_id();
-    int get_passenger_id();
+    int get_passenger_no();
+    int get_sender_id();
+    int get_timestamp();
     MPI_Status get_mpi_status();
 
 private:

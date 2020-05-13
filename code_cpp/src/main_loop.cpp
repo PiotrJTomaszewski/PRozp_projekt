@@ -10,7 +10,7 @@
 MainLoop::MainLoop(std::shared_ptr<Tourist> tourist, std::shared_ptr<SystemInfo> sys_info) {
     this->tourist = tourist;
     this->sys_info = sys_info;
-    should_run = true;
+    run_flag = true;
     std::random_device rd;
     std::mt19937 mt(rd());
     random_rest_time = std::uniform_int_distribution<int>(sys_info->get_min_rest_time(), sys_info->get_max_rest_time());
@@ -22,7 +22,7 @@ MainLoop::~MainLoop() {
 }
 
 void MainLoop::run() {
-    while (should_run) {
+    while (run_flag) {
         switch (tourist->state.safe_get()) { // TODO: Maybe change to lookup?
         case Tourist::RESTING:
             handler_resting();
@@ -145,10 +145,10 @@ void MainLoop::handler_boarded() {
             tourist->state.safe_set(Tourist::TRAVEL);
         }
     } else {
-        tourist->travel_condition.mutex_lock();
+        tourist->travel_condition.mutex_lock(); // TODO: Maybe it should be added earlier
         tourist->travel_condition.wait();
         Debug::dprint(Debug::INFO_CHANGE_STATE, *tourist, "Changing state to TRAVEL");
-        tourist->end_travel_condition.mutex_lock();
+        tourist->submarine_return_condition.mutex_lock();
         tourist->state.safe_set(Tourist::TRAVEL);
     }
 }
@@ -172,7 +172,10 @@ void MainLoop::handler_travel() {
         Packet(Packet::RETURN_SUBMAR, tourist->my_submarine_id, on_my_submarine).send(*tourist, to_send_list);
     } else {
         Debug::dprint(Debug::INFO_WAITING, *tourist, "Waiting for the journey to end");
-        tourist->end_travel_condition.wait();
+        tourist->submarine_return_condition.wait();
+        int captain_id = tourist->submarine_queues->safe_get_tourist_id(tourist->my_submarine_id, 0);
+        Debug::dprintf(Debug::INFO_SENDING, *tourist, "Responing ACK_TRAVEL to the captain (%d)", captain_id);
+        Packet(Packet::ACK_TRAVEL).send(*tourist, captain_id);
     }
     Debug::dprint(Debug::INFO_CHANGE_STATE, *tourist, "Getting on shore");
     tourist->state.safe_set(Tourist::ON_SHORE);
@@ -195,5 +198,5 @@ void MainLoop::handler_on_shore() {
 
 void MainLoop::handler_wrong_state() {
     Debug::dprintf(Debug::ERROR_OTHER, *tourist, "Unknown state: %, terminating!", tourist->state.safe_get());
-    should_run = false;
+    run_flag = false;
 }

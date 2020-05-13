@@ -36,7 +36,6 @@ void Packet::send(Tourist &me, std::list<int> &destination_list) {
     }
 }
 
-
 void Packet::send_to_travelling_with_me(Tourist &me) {
     int my_id = me.get_id();
     data_packet.lamport_clock = me.lamport_clock++;
@@ -62,7 +61,7 @@ void Packet::receive(Tourist &me) {
     me.lamport_clock.store(std::max(me.lamport_clock.load(), data_packet.lamport_clock) + 1);
 }
 
-Packet::msg_t Packet::get_msessage_type() {
+Packet::msg_t Packet::get_message_type() {
     return data_packet.type;
 }
 
@@ -70,8 +69,16 @@ int Packet::get_submarine_id() {
     return data_packet.submar_id;
 }
 
-int Packet::get_passenger_id() {
+int Packet::get_passenger_no() {
     return data_packet.passenger_no;
+}
+
+int Packet::get_sender_id() {
+    return status.MPI_SOURCE;
+}
+
+int Packet::get_timestamp() {
+    return data_packet.lamport_clock;
 }
 
 MPI_Status Packet::get_mpi_status() {
