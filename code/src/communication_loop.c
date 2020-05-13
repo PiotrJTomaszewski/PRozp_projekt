@@ -49,8 +49,20 @@ void handler_req_pony(tourist_t *tourist, system_info_t *sys_info, received_msg_
             send_packet(tourist, &packet, req_sender_id);
             break;
         case WAIT_PONY:
+            if (tourist->my_ack_pony_lamport > received_msg->msg_packet.lamport_clock) {
+                
+            }
+            pthread_mutex_lock(&(tourist->queue_pony_mutex));
+            stack_push(&(tourist->queue_pony), req_sender_id);
+            pthread_mutex_unlock(&(tourist->queue_pony_mutex));
             break;
         case CHOOSE_SUBMAR:
+
+
+
+            pthread_mutex_lock(&(tourist->queue_pony_mutex));
+            stack_push(&(tourist->queue_pony), req_sender_id);
+            pthread_mutex_unlock(&(tourist->queue_pony_mutex));
             break;
         case WAIT_SUBMAR:
             break;

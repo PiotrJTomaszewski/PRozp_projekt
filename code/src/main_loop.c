@@ -35,6 +35,7 @@ void handler_resting(tourist_t *tourist, system_info_t *sys_info) {
     packet_t packet;
     packet.type = REQ_PONY;
     pthread_mutex_lock(&(tourist->state_mutex));  // Locking to avoid ignoring ACK if they came before the state is changed
+    tourist->my_ack_pony_lamport = get_shared_int(&(tourist->lamport_clock));
     broadcast_packet(tourist, &packet, sys_info->tourist_no);
     debug_print(INFO_CHANGE_STATE, tourist, "Changing state to WAIT_PONY");
     tourist->state = WAIT_PONY;

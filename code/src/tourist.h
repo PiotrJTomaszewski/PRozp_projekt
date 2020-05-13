@@ -31,6 +31,7 @@ typedef struct Tourist {
     state_t state;
     shared_int_t lamport_clock;
     int rec_ack_no;
+    int my_ack_pony_lamport;
     // TODO: Consider smaller vars
     stack_t queue_pony; // volatile
     stack_t *queues_submar; // A list of stacks
