@@ -2,6 +2,7 @@
 
 #include <random>
 #include <memory>
+#include <mutex>
 
 #include "tourist.h"
 #include "system_info.h"
@@ -27,6 +28,8 @@ private:
 
     int random_rest_time();
     int random_travel_time();
+
+    std::unique_lock<std::mutex> last_cond_mutex;
 
     // std::mt19937 pseudo_random_generator;
     // std::uniform_int_distribution<int> random_rest_time;
