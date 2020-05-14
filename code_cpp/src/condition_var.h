@@ -15,4 +15,5 @@ private:
     std::mutex cond_mutex;
     std::unique_lock<std::mutex> cond_lock;
     std::condition_variable cond_var;
+    // TODO: Add a boolean to prevent spourious wakeups
 };

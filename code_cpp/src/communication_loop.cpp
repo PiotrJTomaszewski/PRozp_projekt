@@ -180,9 +180,10 @@ void CommunicationLoop::handler_return_submar() {
 void CommunicationLoop::handler_travel_ready() {
     auto state = tourist->state.safe_get();
     if (state == Tourist::WAIT_SUBMAR) {
-        // TODO: Queue the ACK_TRAVEL answer
+        Debug::dprintf(Debug::INFO_RECEIVING, *tourist, "Received TRAVEL_READY from %d, I'll answer when boarded", packet.get_sender_id());
+        tourist->queue_ack_travel();
     } else if (state == Tourist::BOARDED) {
-        Debug::dprintf(Debug::INFO_SENDING, *tourist, "Received TRAVEL_READY from %d, answering", packet.get_sender_id());
+        Debug::dprintf(Debug::INFO_RECEIVING, *tourist, "Received TRAVEL_READY from %d, answering", packet.get_sender_id());
         Packet(Packet::ACK_TRAVEL).send(*tourist, packet.get_sender_id());
     } else {
         // This should be impossible, so if we reach this, something went wrong
@@ -191,15 +192,90 @@ void CommunicationLoop::handler_travel_ready() {
 }
 
 void CommunicationLoop::handler_ack_travel() {
-
+    auto state = tourist->state.safe_get();
+    if (state == Tourist::BOARDED) {
+        if (tourist->is_capitan()) {
+            tourist->ack_travel_condition.mutex_lock();
+            int needed_acks = tourist->get_boarded_on_my_submarine_size() - 1; // Don't need my own ack
+            int received_acks = tourist->increment_received_ack_no();
+            Debug::dprintf(Debug::INFO_RECEIVING, *tourist, "Received ACK_TRAVEL from %d, I have %d, need %d",
+                packet.get_sender_id(),
+                received_acks,
+                needed_acks
+            );
+            if (received_acks == needed_acks) {
+                tourist->clear_received_ack_no();
+                tourist->ack_travel_condition.notify();
+            } else {
+                tourist->ack_travel_condition.mutex_unlock();
+            }
+        } else {
+            // Only captain should be able to get this message
+            handler_wrong_message();
+        }
+    } else if (state == Tourist::TRAVEL) {
+        if (tourist->is_capitan()) {
+            tourist->ack_travel_condition.mutex_lock();
+            int needed_acks = tourist->get_boarded_on_my_submarine_size() - 1; // Don't need my own ack
+            int received_acks = tourist->increment_received_ack_no();
+            Debug::dprintf(Debug::INFO_RECEIVING, *tourist, "Received ACK_TRAVEL from %d, I have %d, need %d",
+                packet.get_sender_id(),
+                received_acks,
+                needed_acks
+            );
+            if (received_acks == needed_acks) {
+                tourist->clear_received_ack_no();
+                tourist->ack_travel_condition.notify();
+            } else {
+                tourist->ack_travel_condition.mutex_unlock();
+            }
+        } else {
+            // Only captain should be able to get this message
+            handler_wrong_message();
+        }
+    } else {
+        // This should be impossible, so if we reach this, something went wrong
+        handler_wrong_message();
+    }
 }
 
 void CommunicationLoop::handler_depart_submar() {
-
+    auto state = tourist->state.safe_get();
+    if (state == Tourist::BOARDED) {
+        tourist->travel_condition.mutex_lock();
+        Debug::dprintf(Debug::INFO_RECEIVING_SENDING, *tourist, "Received DEPART_SUBMAR from the captain, answering ACK_TRAVEL");
+        Packet(Packet::ACK_TRAVEL).send(*tourist, packet.get_sender_id());
+        tourist->travel_condition.notify();
+    } else {
+        // This should be impossible, so if we reach this, something went wrong
+        // resting, wait_pony, choose_submar, wait_submar
+        handler_wrong_message();
+    }
 }
 
 void CommunicationLoop::handler_depart_submar_not_full() {
-
+    auto state = tourist->state.safe_get();
+    if (state == Tourist::BOARDED) {
+        tourist->travel_condition.mutex_lock();
+        Debug::dprintf(Debug::INFO_RECEIVING_SENDING, *tourist, "Received DEPART_SUBMAR from the captain, answering ACK_TRAVEL");
+        Packet(Packet::ACK_TRAVEL).send(*tourist, packet.get_sender_id());
+        // Marking all non-empty submarines as unavailable (without my own submarine)
+        int my_submarine_id = tourist->my_submarine_id.load();
+        tourist->available_submarine_list.mutex_lock();
+        tourist->submarine_queues->mutex_lock();
+        for (int submarine_id=0; submarine_id<sys_info->get_submarine_no(); submarine_id++) {
+            if (submarine_id == my_submarine_id) continue;
+            if (tourist->submarine_queues->unsafe_get_size(submarine_id) > 0)
+                tourist->available_submarine_list.unsafe_set_element(submarine_id, false);
+        }
+        tourist->available_submarine_list.mutex_unlock();
+        tourist->submarine_queues->mutex_unlock();
+        tourist->travel_condition.notify();
+    } else {
+        // This should be impossible, so if we reach this, something went wrong
+        // resting, wait_pony, choose_submar, wait_submar
+        handler_wrong_message();
+    }
 }
 
 void CommunicationLoop::handler_wrong_state() {

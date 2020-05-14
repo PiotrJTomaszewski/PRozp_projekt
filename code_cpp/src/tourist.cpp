@@ -127,3 +127,18 @@ void Tourist::fill_suplement_boarded_on_my_submarine(std::list<int> &list, int t
         list.remove(*it);
     }
 }
+
+int Tourist::my_submarine_get_captain_id() {
+    return submarine_queues->safe_get_tourist_id(my_submarine_id, 0);
+}
+
+void Tourist::queue_ack_travel() {
+    is_ack_travel_queued = true;
+    ack_travel_queued_submarine_id = my_submarine_id;
+}
+
+bool Tourist::get_and_clear_is_ack_travel_queued() {
+    bool result = (is_ack_travel_queued && (ack_travel_queued_submarine_id == my_submarine_id));
+    is_ack_travel_queued = false;
+    return result;
+}

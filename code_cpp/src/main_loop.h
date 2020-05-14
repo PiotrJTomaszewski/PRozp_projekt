@@ -25,7 +25,10 @@ private:
     inline void handler_on_shore();
     inline void handler_wrong_state();
 
-    std::mt19937 pseudo_random_generator;
-    std::uniform_int_distribution<int> random_rest_time;
-    std::uniform_int_distribution<int> random_travel_time;
+    int random_rest_time();
+    int random_travel_time();
+
+    // std::mt19937 pseudo_random_generator;
+    // std::uniform_int_distribution<int> random_rest_time;
+    // std::uniform_int_distribution<int> random_travel_time;
 };

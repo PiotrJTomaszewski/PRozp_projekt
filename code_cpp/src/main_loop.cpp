@@ -1,4 +1,5 @@
-#include <random>
+#include <cstdlib>
+#include <ctime>
 #include <chrono>
 #include <thread>
 #include <list>
@@ -11,10 +12,11 @@ MainLoop::MainLoop(std::shared_ptr<Tourist> tourist, std::shared_ptr<SystemInfo>
     this->tourist = tourist;
     this->sys_info = sys_info;
     run_flag = true;
-    std::random_device rd;
-    std::mt19937 mt(rd());
-    random_rest_time = std::uniform_int_distribution<int>(sys_info->get_min_rest_time(), sys_info->get_max_rest_time());
-    random_travel_time = std::uniform_int_distribution<int>(sys_info->get_min_travel_time(), sys_info->get_max_travel_time());
+    srand(time(NULL));
+    // std::random_device rd;
+    // std::mt19937 mt(rd());
+    // random_rest_time = std::uniform_int_distribution<int>(sys_info->get_min_rest_time(), sys_info->get_max_rest_time());
+    // random_travel_time = std::uniform_int_distribution<int>(sys_info->get_min_travel_time(), sys_info->get_max_travel_time());
 }
 
 MainLoop::~MainLoop() {
@@ -53,7 +55,7 @@ void MainLoop::run() {
 }
 
 void MainLoop::handler_resting() {
-    int resting_time = random_rest_time(pseudo_random_generator);
+    int resting_time = random_rest_time();
     Debug::dprintf(Debug::INFO_OTHER, *tourist, "Going to sleep for %d seconds", resting_time);
     std::this_thread::sleep_for(std::chrono::seconds(resting_time));
     Debug::dprint(Debug::INFO_SENDING, *tourist, "Woke up. Requesting a pony suit");
@@ -67,7 +69,7 @@ void MainLoop::handler_resting() {
 
 void MainLoop::handler_wait_pony() {
     int needed_ack = sys_info->get_tourist_no() - sys_info->get_pony_no();
-    if (needed_ack <= 1) { // The tourist already has his own acknowledgment
+    if (needed_ack <= 0) { // The tourist already has his own acknowledgment
         Debug::dprint(Debug::INFO_CHANGE_STATE, *tourist, "There is enough pony suits for everyone, so I'm taking one");
         tourist->ack_pony_condition.mutex_unlock();
     } else {
@@ -155,6 +157,10 @@ void MainLoop::handler_boarded() {
         }
     } else {
         tourist->travel_condition.mutex_lock(); // TODO: Maybe it should be added earlier
+        if (tourist->get_and_clear_is_ack_travel_queued()) {
+            Debug::dprintf(Debug::INFO_SENDING, *tourist, "Sending queued ACK_TRAVEL to the captain of %d", tourist->my_submarine_id.load());
+            Packet(Packet::ACK_TRAVEL).send(*tourist, tourist->my_submarine_get_captain_id());
+        }
         tourist->travel_condition.wait();
         Debug::dprint(Debug::INFO_CHANGE_STATE, *tourist, "Changing state to TRAVEL");
         tourist->submarine_return_condition.mutex_lock();
@@ -165,7 +171,7 @@ void MainLoop::handler_boarded() {
 void MainLoop::handler_travel() {
     Debug::dprintf(Debug::INFO_OTHER, *tourist, "Going on a journey on the submarine %d", tourist->my_submarine_id.load());
     if (tourist->is_capitan()) {
-        int travel_time = random_travel_time(pseudo_random_generator);
+        int travel_time = random_travel_time();
         Debug::dprintf(Debug::INFO_OTHER, *tourist, "Journey on %d will take %d seconds", travel_time);
         std::this_thread::sleep_for(std::chrono::seconds(travel_time));
         tourist->ack_travel_condition.mutex_lock();
@@ -208,4 +214,13 @@ void MainLoop::handler_on_shore() {
 void MainLoop::handler_wrong_state() {
     Debug::dprintf(Debug::ERROR_OTHER, *tourist, "Unknown state: %, terminating!", tourist->state.safe_get());
     run_flag = false;
+}
+
+
+int MainLoop::random_rest_time() {
+    return sys_info->get_min_rest_time() + rand() % (sys_info->get_max_rest_time() - sys_info->get_min_rest_time() + 1);
+}
+
+int MainLoop::random_travel_time() {
+    return sys_info->get_min_travel_time() + rand() % (sys_info->get_max_travel_time() - sys_info->get_min_travel_time() + 1);
 }

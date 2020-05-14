@@ -24,7 +24,6 @@ public:
     std::atomic<int> my_req_pony_timestamp;
     std::atomic<int> my_submarine_id;
     std::atomic<bool> is_my_submarine_full;
-    std::atomic<bool> is_ack_travel_queued;
     SharedVector<bool> available_submarine_list;
     SharedVector<int> queue_pony;
     std::unique_ptr<QueuesSubmarine> submarine_queues;
@@ -47,10 +46,17 @@ public:
     void fill_boarded_on_my_submarine(SystemInfo &sys_info);
     int get_boarded_on_my_submarine_size();
     void fill_suplement_boarded_on_my_submarine(std::list<int> &list, int tourist_no);
+    int my_submarine_get_captain_id();
+
+    void queue_ack_travel(); // TODO: Protect from race condition?
+    bool get_and_clear_is_ack_travel_queued();
+
 
 private:
     int id;
     std::vector<int> boarded_on_my_submarine;
     int try_no; // Only main loop'll have access to this
     int received_ack_no; // Only communication loop'll have access to this
+    bool is_ack_travel_queued;
+    int  ack_travel_queued_submarine_id;
 };
