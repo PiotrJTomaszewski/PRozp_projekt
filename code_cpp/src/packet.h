@@ -48,6 +48,6 @@ private:
         int submar_id;
         int passenger_no;
     };
-    packet_t data_packet;
-    MPI_Status status;
+    packet_t data_packet = {REQ_PONY, 0, 0, 0};
+    MPI_Status status = {0, 0, 0, 0, 0};
 };

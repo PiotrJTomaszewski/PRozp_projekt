@@ -33,6 +33,9 @@ void MainLoop::run() {
         case Tourist::CHOOSE_SUBMAR:
             handler_choose_submar();
             break;
+        case Tourist::WAIT_SUBMAR:
+            handler_wait_submar();
+            break;
         case Tourist::BOARDED:
             handler_boarded();
             break;
@@ -88,26 +91,32 @@ void MainLoop::handler_choose_submar() {
     } else {
         Debug::dprint(Debug::INFO_WAITING, *tourist, "No free submarine found, waiting for one to return");
         tourist->submarine_return_condition.wait();
-        Debug::dprint(Debug::INFO_OTHER, *tourist, "I've notices that a submarine has returned, waking up"); // TODO: Tourist HAS TO select this submarine
+        Debug::dprint(Debug::INFO_OTHER, *tourist, "I've noticed that a submarine has returned, waking up"); // TODO: Tourist HAS TO select this submarine
     }
 }
 
 void MainLoop::handler_wait_submar() {
-    Debug::dprintf(Debug::INFO_OTHER, *tourist, "Waiting for access to the %d submarine", tourist->my_submarine_id);
-    tourist->ack_submar_condition.wait();
+    if (sys_info->get_tourist_no() == 1) {
+        Debug::dprint(Debug::INFO_OTHER, *tourist, "I'm the only tourist in the system and I have my own permission");
+        tourist->ack_submar_condition.mutex_unlock();
+    } else {
+        Debug::dprintf(Debug::INFO_OTHER, *tourist, "Waiting for access to the %d submarine", tourist->my_submarine_id.load());
+        tourist->ack_submar_condition.wait();
+    }
+    tourist->submarine_queues->safe_push_back(tourist->my_submarine_id.load(), tourist->get_id());
     if (tourist->can_board(*sys_info)) {
-        Debug::dprintf(Debug::INFO_CHANGE_STATE, *tourist, "Can board %d, changing state to BOARDED", tourist->my_submarine_id);
+        Debug::dprintf(Debug::INFO_CHANGE_STATE, *tourist, "Can board %d, changing state to BOARDED", tourist->my_submarine_id.load());
         tourist->state.safe_set(Tourist::BOARDED);
     } else {
         if (tourist->increment_try_no() < sys_info->get_max_try_no()) {
-            tourist->available_submarine_list.safe_set_element(false, tourist->my_submarine_id);
+            tourist->available_submarine_list.safe_set_element(false, tourist->my_submarine_id.load());
             Debug::dprintf(Debug::INFO_CHANGE_STATE, *tourist, "Can't board %d, trying another one, so changing state to CHOOSE_SUBMAR");
             tourist->state.safe_set(Tourist::CHOOSE_SUBMAR);
         } else {
-            Debug::dprintf(Debug::INFO_WAITING, *tourist, "Can't fit in %d but I've given up and decided to wait", tourist->my_submarine_id);
+            Debug::dprintf(Debug::INFO_WAITING, *tourist, "Can't fit in %d but I've given up and decided to wait", tourist->my_submarine_id.load());
             // TODO: WAIT FOR MY SUBMARINE
             Debug::dprint(Debug::ERROR_OTHER, *tourist, "WAITING FOR MY SUBMARINE IS NOT IMPLEMENTED!");
-            Debug::dprintf(Debug::INFO_WAITING, *tourist, "The submaring %d has returned, boarding now", tourist->my_submarine_id);
+            Debug::dprintf(Debug::INFO_WAITING, *tourist, "The submaring %d has returned, boarding now", tourist->my_submarine_id.load());
             tourist->state.safe_set(Tourist::BOARDED);
         }
     }
@@ -117,13 +126,13 @@ void MainLoop::handler_boarded() {
     if (tourist->is_capitan()) { // TODO: Sometimes he can be that last passenger
     // TODO: Submarine not always will get full
         tourist->full_submarine_condition.mutex_lock();
-        Debug::dprintf(Debug::INFO_WAITING, *tourist, "I'm a captain of %d, waiting for the submarine to get full", tourist->my_submarine_id);
+        Debug::dprintf(Debug::INFO_WAITING, *tourist, "I'm a captain of %d, waiting for the submarine to get full", tourist->my_submarine_id.load());
         tourist->full_submarine_condition.wait();
         tourist->fill_boarded_on_my_submarine(*sys_info);
         if (tourist->get_boarded_on_my_submarine_size() == 1) {
-            Debug::dprintf(Debug::INFO_OTHER, *tourist, "Submarine %d is full and I'm alone", tourist->my_submarine_id);
+            Debug::dprintf(Debug::INFO_OTHER, *tourist, "Submarine %d is full and I'm alone", tourist->my_submarine_id.load());
         } else {
-            Debug::dprintf(Debug::INFO_SENDING, *tourist, "Submarine %d is full, asking for permission to start the travel", tourist->my_submarine_id);
+            Debug::dprintf(Debug::INFO_SENDING, *tourist, "Submarine %d is full, asking for permission to start the travel", tourist->my_submarine_id.load());
             tourist->ack_travel_condition.mutex_lock();
             Packet(Packet::ACK_TRAVEL).send_to_travelling_with_me(*tourist);
             Debug::dprint(Debug::INFO_WAITING, *tourist, "Waiting for answers");
@@ -132,10 +141,10 @@ void MainLoop::handler_boarded() {
             Packet::msg_t msg_type;
             if (tourist->is_my_submarine_full) {
                 msg_type = Packet::DEPART_SUBMAR;
-                Debug::dprintf(Debug::INFO_SENDING, *tourist, "Informing passengers on %d that the submarine is leaving", tourist->my_submarine_id);
+                Debug::dprintf(Debug::INFO_SENDING, *tourist, "Informing passengers on %d that the submarine is leaving", tourist->my_submarine_id.load());
             } else {
                 msg_type = Packet::DEPART_SUBMAR_NOT_FULL;
-                Debug::dprintf(Debug::INFO_SENDING, *tourist, "Informing passengers on %d that submarines are leaving not full", tourist->my_submarine_id);
+                Debug::dprintf(Debug::INFO_SENDING, *tourist, "Informing passengers on %d that submarines are leaving not full", tourist->my_submarine_id.load());
             }
             tourist->travel_condition.mutex_lock();
             Packet(msg_type).send_to_travelling_with_me(*tourist);
@@ -154,14 +163,14 @@ void MainLoop::handler_boarded() {
 }
 
 void MainLoop::handler_travel() {
-    Debug::dprintf(Debug::INFO_OTHER, *tourist, "Going on a journey on the submarine %d", tourist->my_submarine_id);
+    Debug::dprintf(Debug::INFO_OTHER, *tourist, "Going on a journey on the submarine %d", tourist->my_submarine_id.load());
     if (tourist->is_capitan()) {
         int travel_time = random_travel_time(pseudo_random_generator);
         Debug::dprintf(Debug::INFO_OTHER, *tourist, "Journey on %d will take %d seconds", travel_time);
         std::this_thread::sleep_for(std::chrono::seconds(travel_time));
         tourist->ack_travel_condition.mutex_lock();
         int on_my_submarine = tourist->get_boarded_on_my_submarine_size();
-        Debug::dprintf(Debug::INFO_SENDING, *tourist, "Journey on %d has ended, informing passengers", tourist->my_submarine_id);
+        Debug::dprintf(Debug::INFO_SENDING, *tourist, "Journey on %d has ended, informing passengers", tourist->my_submarine_id.load());
         Packet(Packet::RETURN_SUBMAR, tourist->my_submarine_id, on_my_submarine).send_to_travelling_with_me(*tourist);
         Debug::dprint(Debug::INFO_WAITING, *tourist, "Waiting for all of the ACK_TRAVEL responses");
         tourist->submarine_queues->safe_remove_from_begin(tourist->my_submarine_id, on_my_submarine);

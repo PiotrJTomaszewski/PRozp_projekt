@@ -39,7 +39,7 @@ void QueuesSubmarine::safe_remove_from_begin(int submarine_id, int number) {
 
 void QueuesSubmarine::safe_remove_tourist_id(int submarine_id, int tourist_id) {
     int position;
-    for (position = 0; position < queues[submarine_id].size(); position++) {
+    for (position = 0; position < static_cast<int>(queues[submarine_id].size()); position++) {
         if (tourist_id == queues[submarine_id][position]) break;
     }
     queues[submarine_id].erase(queues[submarine_id].begin() + position);

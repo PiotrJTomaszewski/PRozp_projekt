@@ -13,8 +13,6 @@ CommunicationLoop::~CommunicationLoop() {
 }
 
 void CommunicationLoop::run() {
-    // TODO: It's a thread
-    Packet packet;
     while (run_flag) {
         // TODO: Replace with a lookup
         // tourist->state.mutex_lock(); // TODO: Should be locked?
@@ -72,7 +70,7 @@ void CommunicationLoop::handler_req_pony() {
         Packet(Packet::ACK_PONY).send(*tourist, sender_id);
         break;
     case Tourist::WAIT_PONY:
-        if (tourist->my_req_pony_timestamp > packet.get_timestamp()) {
+        if (tourist->my_req_pony_timestamp.load() > packet.get_timestamp()) {
             Debug::dprintf(Debug::INFO_SENDING, *tourist, "Sending ACK_PONY to %d", sender_id);
             Packet(Packet::ACK_PONY).send(*tourist, sender_id);
         } else {
@@ -119,7 +117,7 @@ void CommunicationLoop::handler_req_submar() {
     int submarine_id = packet.get_submarine_id();
     Debug::dprintf(Debug::INFO_RECEIVING, *tourist, "Received REQ_SUBMAR from %d, adding to the queue %d and responding ACK_SUBMAR", sender_id, submarine_id);
     tourist->submarine_queues->safe_push_back(submarine_id, sender_id);
-    Packet(Packet::ACK_PONY).send(*tourist, sender_id);
+    Packet(Packet::ACK_SUBMAR).send(*tourist, sender_id);
 }
 
 void CommunicationLoop::handler_ack_submar() {

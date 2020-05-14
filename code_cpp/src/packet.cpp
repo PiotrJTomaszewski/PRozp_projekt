@@ -2,7 +2,6 @@
 #include "shared_var.h"
 
 Packet::Packet() {
-
 }
 
 Packet::Packet(msg_t message_type) {
@@ -21,7 +20,6 @@ Packet::Packet(msg_t message_type, int submar_id, int passenger_no) {
 }
 
 Packet::~Packet() {
-
 }
 
 void Packet::send(Tourist &me, int destination) {
@@ -81,6 +79,6 @@ int Packet::get_timestamp() {
     return data_packet.lamport_clock;
 }
 
-MPI_Status Packet::get_mpi_status() {
-    return status;
-}
+// MPI_Status Packet::get_mpi_status() {
+//     return *status;
+// }

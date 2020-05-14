@@ -16,14 +16,14 @@ private:
     std::shared_ptr<Tourist> tourist;
     std::shared_ptr<SystemInfo> sys_info;
     bool run_flag;
-    void handler_resting();
-    void handler_wait_pony();
-    void handler_choose_submar();
-    void handler_wait_submar();
-    void handler_boarded();
-    void handler_travel();
-    void handler_on_shore();
-    void handler_wrong_state();
+    inline void handler_resting();
+    inline void handler_wait_pony();
+    inline void handler_choose_submar();
+    inline void handler_wait_submar();
+    inline void handler_boarded();
+    inline void handler_travel();
+    inline void handler_on_shore();
+    inline void handler_wrong_state();
 
     std::mt19937 pseudo_random_generator;
     std::uniform_int_distribution<int> random_rest_time;

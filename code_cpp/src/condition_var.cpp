@@ -1,7 +1,6 @@
 #include "condition_var.h"
 
 ConditionVar::ConditionVar() {
-
 }
 
 ConditionVar::~ConditionVar() {
@@ -9,15 +8,16 @@ ConditionVar::~ConditionVar() {
 }
 
 void ConditionVar::mutex_lock() {
-    mutex.lock();
+    cond_mutex.lock();
 }
 
 void ConditionVar::mutex_unlock() {
-    mutex.unlock();
+    cond_mutex.unlock();
 }
 
 void ConditionVar::wait() {
-    cond_var.wait(mutex);
+    std::unique_lock<std::mutex> lock = std::unique_lock<std::mutex>(cond_mutex);
+    cond_var.wait(lock);
 }
 
 void ConditionVar::notify() {

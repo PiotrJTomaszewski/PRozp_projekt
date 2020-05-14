@@ -12,6 +12,7 @@ public:
     void wait();
     void notify();
 private:
-    std::unique_lock<std::mutex> mutex;
+    std::mutex cond_mutex;
+    std::unique_lock<std::mutex> cond_lock;
     std::condition_variable cond_var;
 };

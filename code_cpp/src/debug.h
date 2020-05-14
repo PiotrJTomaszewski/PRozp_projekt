@@ -1,3 +1,5 @@
+#include <string>
+
 #include "tourist.h"
 
 class Debug {
@@ -12,6 +14,6 @@ public:
         ERROR_RECEIVING,
         ERROR_OTHER
     };
-    static void dprint(debug_msg_type_t msg_type, Tourist &tourist, char *text);
-    static void dprintf(debug_msg_type_t, Tourist &tourist, char *format, ...);
+    static void dprint(debug_msg_type_t msg_type, Tourist &tourist, std::string text);
+    static void dprintf(debug_msg_type_t, Tourist &tourist, std::string format, ...);
 };
