@@ -19,7 +19,7 @@ public:
     // inline void notify();
     void notify(std::unique_lock<std::mutex> &mutex);
     void wait(std::unique_lock<std::mutex> &mutex);
-    void wait_no_relock(std::unique_lock<std::mutex> &mutex);
+    // void wait_no_relock(std::unique_lock<std::mutex> &mutex);
 
 private:
     std::mutex cond_mutex;
