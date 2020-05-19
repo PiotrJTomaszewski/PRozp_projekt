@@ -88,7 +88,7 @@ void MainLoop::handler_wait_pony() {
         Debug::dprint(Debug::INFO_CHANGE_STATE, *tourist, "There is enough pony suits for everyone, so I'm taking one");
         // ack_pony_cond_unqiue_mutex.unlock(); // We don't have to wait for a signal
     } else {
-        tourist->ack_pony_condition.wait_no_relock(ack_pony_cond_unqiue_mutex);
+        tourist->ack_pony_condition.wait(ack_pony_cond_unqiue_mutex);
         Debug::dprint(Debug::INFO_CHANGE_STATE, *tourist, "Received enough ACK_PONY, getting a suit and changing state to CHOOSE_SUBMAR");
     }
     // last_cond_mutex = tourist->submarine_return_condition.mutex_lock();
@@ -121,25 +121,25 @@ void MainLoop::handler_wait_submar() {
         Debug::dprintf(Debug::INFO_OTHER, *tourist, "Waiting for access to the %d submarine", tourist->my_submarine_id.load());
         tourist->ack_submar_condition.wait(ack_submar_cond_unique_mutex);
     }
-    // if (tourist->can_board(*sys_info)) {
-    //     Debug::dprintf(Debug::INFO_CHANGE_STATE, *tourist, "Can board %d, changing state to BOARDED", tourist->my_submarine_id.load());
-    //     tourist->state.safe_set(Tourist::BOARDED);
-    // } else {
-    //     if (tourist->increment_try_no() < sys_info->get_max_try_no()) {
-    //         tourist->available_submarine_list.safe_set_element(false, tourist->my_submarine_id.load());
-    //         Debug::dprintf(Debug::INFO_CHANGE_STATE, *tourist, "Can't board %d, trying another one, so changing state to CHOOSE_SUBMAR");
-    //         Debug::dprint(Debug::INFO_SENDING, *tourist, "Broadcasting FULL_SUBMARINE_RETREAT");
-    //         Packet(Packet::FULL_SUBMAR_RETREAT, tourist->my_submarine_id.load()).broadcast(*tourist, sys_info->get_tourist_no());
-    //         tourist->state.safe_set(Tourist::CHOOSE_SUBMAR);
-    //     } else {
-    //         Debug::dprintf(Debug::INFO_WAITING, *tourist, "Can't fit in %d but I've given up and decided to wait", tourist->my_submarine_id.load());
-    //         Debug::dprint(Debug::INFO_SENDING, *tourist, "Broadcasting FULL_SUBMARINE_STAY");
-    //         Packet(Packet::FULL_SUBMAR_STAY, tourist->my_submarine_id.load()).broadcast(*tourist, sys_info->get_tourist_no());
-    //         tourist->submarine_return_condition.wait(submarine_return_cond_unique_mutex);
-    //         Debug::dprintf(Debug::INFO_WAITING, *tourist, "The submaring %d has returned, boarding now", tourist->my_submarine_id.load());
-    //         tourist->state.safe_set(Tourist::BOARDED);
-    //     }
-    // }
+    if (tourist->can_board(*sys_info)) {
+        Debug::dprintf(Debug::INFO_CHANGE_STATE, *tourist, "Can board %d, changing state to BOARDED", tourist->my_submarine_id.load());
+        tourist->state.safe_set(Tourist::BOARDED);
+    } else {
+        if (tourist->increment_try_no() < sys_info->get_max_try_no()) {
+            tourist->available_submarine_list.safe_set_element(false, tourist->my_submarine_id.load());
+            Debug::dprintf(Debug::INFO_CHANGE_STATE, *tourist, "Can't board %d, trying another one, so changing state to CHOOSE_SUBMAR", tourist->my_submarine_id.load());
+            Debug::dprint(Debug::INFO_SENDING, *tourist, "Broadcasting FULL_SUBMARINE_RETREAT");
+            Packet(Packet::FULL_SUBMAR_RETREAT, tourist->my_submarine_id.load()).broadcast(*tourist, sys_info->get_tourist_no());
+            tourist->state.safe_set(Tourist::CHOOSE_SUBMAR);
+        } else {
+            Debug::dprintf(Debug::INFO_WAITING, *tourist, "Can't fit in %d but I've given up and decided to wait", tourist->my_submarine_id.load());
+            Debug::dprint(Debug::INFO_SENDING, *tourist, "Broadcasting FULL_SUBMARINE_STAY");
+            Packet(Packet::FULL_SUBMAR_STAY, tourist->my_submarine_id.load()).broadcast(*tourist, sys_info->get_tourist_no());
+            tourist->submarine_return_condition.wait(submarine_return_cond_unique_mutex);
+            Debug::dprintf(Debug::INFO_WAITING, *tourist, "The submaring %d has returned, boarding now", tourist->my_submarine_id.load());
+            tourist->state.safe_set(Tourist::BOARDED);
+        }
+    }
 }
 
 void MainLoop::handler_boarded() {

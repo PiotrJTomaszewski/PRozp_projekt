@@ -50,16 +50,16 @@ void ConditionVar::wait(std::unique_lock<std::mutex> &mutex) {
     was_signal_sent.store(false);
     while (!was_signal_sent.load()) {
         cond_var.wait(mutex);
-        mutex.lock();
+        // mutex.lock();
     }
 }
 
-void ConditionVar::wait_no_relock(std::unique_lock<std::mutex> &mutex) {
-    was_signal_sent.store(false);
-    while (!was_signal_sent.load()) {
-        cond_var.wait(mutex);
-        if (!was_signal_sent.load()) {
-            mutex.lock();
-        }
-    }
-}
+// void ConditionVar::wait_no_relock(std::unique_lock<std::mutex> &mutex) {
+//     was_signal_sent.store(false);
+//     while (!was_signal_sent.load()) {
+//         cond_var.wait(mutex);
+//         if (!was_signal_sent.load()) {
+//             mutex.lock();
+//         }
+//     }
+// }
