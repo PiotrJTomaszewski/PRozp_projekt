@@ -38,3 +38,28 @@ std::unique_lock<std::mutex> ConditionVar::mutex_lock() {
 // void ConditionVar::notify() {
 //     cond_var.notify_one();
 // }
+
+void ConditionVar::notify(std::unique_lock<std::mutex> &mutex) {
+    was_signal_sent.store(true);
+    cond_var.notify_one();
+    mutex.unlock();
+
+}
+
+void ConditionVar::wait(std::unique_lock<std::mutex> &mutex) {
+    was_signal_sent.store(false);
+    while (!was_signal_sent.load()) {
+        cond_var.wait(mutex);
+        mutex.lock();
+    }
+}
+
+void ConditionVar::wait_no_relock(std::unique_lock<std::mutex> &mutex) {
+    was_signal_sent.store(false);
+    while (!was_signal_sent.load()) {
+        cond_var.wait(mutex);
+        if (!was_signal_sent.load()) {
+            mutex.lock();
+        }
+    }
+}

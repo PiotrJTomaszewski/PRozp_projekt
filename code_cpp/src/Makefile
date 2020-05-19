@@ -21,5 +21,4 @@ clean:
 	# rm $(OUTDIR)/*.o
 	rm *.o
 	rm nanozombie.out
-	rm logs/*
 

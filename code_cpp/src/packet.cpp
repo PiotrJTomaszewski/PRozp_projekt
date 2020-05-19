@@ -44,7 +44,7 @@ void Packet::send_to_travelling_with_me(Tourist &me) {
     }
 }
 
-void Packet::broadcast(Tourist &me, int tourists_in_system) {
+int Packet::broadcast(Tourist &me, int tourists_in_system) {
     int my_id = me.get_id();
     data_packet.lamport_clock = me.lamport_clock++; // TODO: Should increment after every message or just once?
     for (int id = 0; id < tourists_in_system; id++) {
@@ -52,6 +52,7 @@ void Packet::broadcast(Tourist &me, int tourists_in_system) {
             MPI_Send(&data_packet, sizeof(packet_t), MPI_BYTE, id, 1, MPI_COMM_WORLD);
         }
     }
+    return data_packet.lamport_clock;
 }
 
 void Packet::receive(Tourist &me) {

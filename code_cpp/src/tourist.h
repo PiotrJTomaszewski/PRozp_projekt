@@ -51,6 +51,8 @@ public:
     void queue_ack_travel(); // TODO: Protect from race condition?
     bool get_and_clear_is_ack_travel_queued();
 
+    bool is_submarine_deadlock(int tourist_no);
+    std::atomic<bool> was_submarine_deadlock_detected;
 
 private:
     int id;

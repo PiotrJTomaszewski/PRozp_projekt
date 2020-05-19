@@ -31,7 +31,7 @@ public:
     void send(Tourist &me, int destination);
     void send(Tourist &me, std::list<int> &destination_list);
     void send_to_travelling_with_me(Tourist &me);
-    void broadcast(Tourist &me, int tourists_in_system);
+    int broadcast(Tourist &me, int tourists_in_system);
     void receive(Tourist &me);
 
     msg_t get_message_type();

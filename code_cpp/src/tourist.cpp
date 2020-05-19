@@ -4,7 +4,7 @@
 Tourist::Tourist(int id, int submarine_no) {
     this->id = id;
     submarine_queues = std::unique_ptr<QueuesSubmarine>(new QueuesSubmarine(submarine_no));
-    received_ack_no = 0;
+    received_ack_no = 1;
     is_ack_travel_queued = false;
     lamport_clock = 0;
     state.unsafe_set(RESTING);
@@ -13,6 +13,7 @@ Tourist::Tourist(int id, int submarine_no) {
     for (int i=0; i<submarine_no; i++) {
         available_submarine_list.unsafe_push_back(true);
     }
+    was_submarine_deadlock_detected = false;
 }
 
 Tourist::~Tourist() {
@@ -36,11 +37,11 @@ void Tourist::set_try_no(int value) {
 }
 
 int Tourist::increment_received_ack_no() {
-    return received_ack_no++;
+    return ++received_ack_no;
 }
 
 void Tourist::clear_received_ack_no() {
-    received_ack_no = 0;
+    received_ack_no = 1;
 }
 
 int Tourist::get_best_submarine_id(SystemInfo &sys_info) {
@@ -141,4 +142,31 @@ bool Tourist::get_and_clear_is_ack_travel_queued() {
     bool result = (is_ack_travel_queued && (ack_travel_queued_submarine_id == my_submarine_id));
     is_ack_travel_queued = false;
     return result;
+}
+
+bool Tourist::is_submarine_deadlock(int tourist_no) {
+    bool is_deadlock = false;
+    bool are_all_in_port = true;
+    int submarine_no = available_submarine_list.unsafe_get_size();
+    submarine_queues->mutex_lock();
+    available_submarine_list.mutex_lock();
+    for (int i=0; i<submarine_no; i++) {
+        if (!available_submarine_list.unsafe_get_element(i)) {
+            are_all_in_port = false;
+            break;
+        }
+    }
+
+    if (are_all_in_port) {
+        int tourists_in_submarines = 0;
+        for (int i=0; i<submarine_no; i++) {
+            tourists_in_submarines += submarine_queues->unsafe_get_size(i);
+        }
+        if (tourists_in_submarines == tourist_no) {
+            is_deadlock = true;
+        }
+    }
+    available_submarine_list.mutex_unlock();
+    submarine_queues->mutex_unlock();
+    return is_deadlock;
 }
