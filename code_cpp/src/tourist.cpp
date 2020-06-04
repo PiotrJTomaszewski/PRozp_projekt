@@ -83,7 +83,7 @@ int Tourist::get_best_submarine_id(SystemInfo &sys_info) {
     return best_submarine_id;
 }
 
-bool Tourist::can_board(SystemInfo &sys_info) {
+bool Tourist::can_board_my_submarine(SystemInfo &sys_info) {
     int space_left = sys_info.get_submarine_capacity(my_submarine_id);
     int passenger_id;
     submarine_queues->mutex_lock();

@@ -75,7 +75,9 @@ void ConditionVar::notify(ConditionVar::ExtraVarType extra_var) {
 
 ConditionVar::ExtraVarType ConditionVar::wait() {
     sem_wait(&semaphore);
-    return extra_var.load();
+    auto var = extra_var.load();
+    extra_var.store(NO_VAR);
+    return var;
     // is_signal_ready = false;
 }
 
@@ -85,9 +87,12 @@ bool ConditionVar::get_is_signal_ready() {
 
 ConditionVar::ExtraVarType ConditionVar::wait_for(ConditionVar::ExtraVarType value) {
     bool should_wait = true;
+    ExtraVarType var;
     while (should_wait) {
         sem_wait(&semaphore);
-        should_wait = !(extra_var.load() == value);
+        var = extra_var.load();
+        should_wait = !(var == value);
     }
-    return extra_var.load();
+    extra_var.store(NO_VAR);
+    return var;
 }

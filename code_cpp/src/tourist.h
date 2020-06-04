@@ -30,9 +30,9 @@ public:
     ConditionVar ack_pony_condition;
     ConditionVar ack_submar_condition;
     ConditionVar submarine_return_condition;
-    ConditionVar full_submarine_condition;
+    ConditionVar submarine_should_leave_condition;
     ConditionVar ack_travel_condition;
-    ConditionVar travel_condition;
+    ConditionVar submarine_depart_condition;
     int get_id();
     int increment_try_no();
     int get_try_no();
@@ -41,7 +41,7 @@ public:
     void clear_received_ack_no();
 
     int get_best_submarine_id(SystemInfo &sys_info);
-    bool can_board(SystemInfo &sys_info);
+    bool can_board_my_submarine(SystemInfo &sys_info);
     bool is_capitan();
     void fill_boarded_on_my_submarine(SystemInfo &sys_info);
     int get_boarded_on_my_submarine_size();

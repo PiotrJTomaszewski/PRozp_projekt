@@ -26,9 +26,11 @@ public:
     enum ExtraVarType {
         NO_VAR,
         DEADLOCK_DETECTED,
-        NO_DEADLOCK_DETECTED,
+        SUBMARINE_FULL,
         MY_SUBMARINE,
-        ANY_SUBMARINE
+        ANY_SUBMARINE,
+        ENOUGH_ACK,
+        ALL_ACK
     };
     void lock_mutex();
     void unlock_mutex();
