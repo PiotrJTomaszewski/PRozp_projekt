@@ -94,18 +94,14 @@ void CommunicationLoop::handler_req_pony() {
 void CommunicationLoop::handler_ack_pony() {
     auto state = tourist->state.safe_get();
     if (state == Tourist::WAIT_PONY) {
-        // auto cond_lock = tourist->ack_pony_condition.mutex_lock();
         int needed_ack_no = sys_info->get_tourist_no() - sys_info->get_pony_no() + 1;
         if (needed_ack_no <= 1)
             needed_ack_no = 1;
         int received_ack = tourist->increment_received_ack_no();
         Debug::dprintf(*tourist, "Received ACK_PONY, I have %d, need %d", received_ack, needed_ack_no);
         if (received_ack == needed_ack_no && needed_ack_no > 1) {
-            // tourist->clear_received_ack_no();
-            // tourist->ack_pony_condition.notify(cond_lock);
             tourist->ack_pony_condition.notify(ConditionVar::NO_VAR);
         }  else {
-            // cond_lock.unlock();
             Debug::dprint(*tourist, "Received ACK_PONY, ignoring");
         }
     } else {
@@ -124,8 +120,6 @@ void CommunicationLoop::handler_req_submar() {
     if (tourist->state.unsafe_get() == Tourist::BOARDED && tourist->is_capitan()) {
         if (tourist->is_submarine_deadlock(*sys_info)) {
             Debug::dprint(*tourist, "Submarine deadlock detected");
-            // auto cond_lock = tourist->full_submarine_condition.mutex_lock();
-            // tourist->full_submarine_condition.notify(cond_lock);
             tourist->full_submarine_condition.notify(ConditionVar::DEADLOCK_DETECTED);
         }
     }
@@ -137,16 +131,11 @@ void CommunicationLoop::handler_ack_submar() {
     tourist->state.mutex_lock();
     auto state = tourist->state.unsafe_get();
     if (state == Tourist::WAIT_SUBMAR) {
-        // auto cond_lock = tourist->ack_submar_condition.mutex_lock();
         int needed_ack_no = sys_info->get_tourist_no();
         int received_ack = tourist->increment_received_ack_no();
         Debug::dprintf(*tourist, "Received ACK_SUBMAR from %d, I have %d, need %d", packet.get_sender_id(), received_ack, needed_ack_no);
         if (received_ack == needed_ack_no && needed_ack_no > 1) {
-            // tourist->clear_received_ack_no();
-            // tourist->ack_submar_condition.notify(cond_lock);
             tourist->ack_submar_condition.notify(ConditionVar::NO_VAR);
-        }  else {
-            // cond_lock.unlock();
         }
     } else {
         // This should be impossible, so if we reach this, something went wrong
@@ -160,8 +149,6 @@ void CommunicationLoop::handler_full_submar_stay() {
     Debug::dprintf(*tourist, "Received FULL_SUBMAR_STAY from %d, marking submarine %d as unavailable", packet.get_sender_id(), submarine_id);
     tourist->available_submarine_list.safe_set_element(submarine_id, false);
     if (tourist->state.safe_get() == Tourist::BOARDED && tourist->is_capitan()) {
-        // auto cond_lock = tourist->full_submarine_condition.mutex_lock();
-        // tourist->full_submarine_condition.notify(cond_lock);
         tourist->full_submarine_condition.notify(ConditionVar::NO_DEADLOCK_DETECTED);
     }
 }
@@ -173,8 +160,6 @@ void CommunicationLoop::handler_full_submar_retreat() {
     tourist->available_submarine_list.safe_set_element(submarine_id, false);
     tourist->submarine_queues->safe_remove_tourist_id(submarine_id, sender_id);
     if (tourist->state.safe_get() == Tourist::BOARDED && tourist->is_capitan()) {
-        // auto cond_lock = tourist->full_submarine_condition.mutex_lock();
-        // tourist->full_submarine_condition.notify(cond_lock);
         tourist->full_submarine_condition.notify(ConditionVar::NO_DEADLOCK_DETECTED);
     }
 }
@@ -189,13 +174,9 @@ void CommunicationLoop::handler_return_submar() {
     auto state = tourist->state.unsafe_get();
     if (state == Tourist::CHOOSE_SUBMAR) {
         // TODO: If in CHOOSE_SUMBAR, he should choose this submarine
-        // auto cond_lock = tourist->submarine_return_condition.mutex_lock();
-        // tourist->submarine_return_condition.notify(cond_lock);
         tourist->submarine_return_condition.notify(ConditionVar::ANY_SUBMARINE);
     } else if (state == Tourist::WAIT_SUBMAR) {
         if (submarine_id == tourist->my_submarine_id.load()) {
-            // auto cond_lock = tourist->submarine_return_condition.mutex_lock();
-            // tourist->submarine_return_condition.notify(cond_lock);
             tourist->submarine_return_condition.notify(ConditionVar::MY_SUBMARINE);
         }
     } else if (state == Tourist::TRAVEL) {
@@ -236,7 +217,6 @@ void CommunicationLoop::handler_ack_travel() {
     auto state = tourist->state.safe_get();
     if (state == Tourist::BOARDED) {
         if (tourist->is_capitan()) {
-            // auto cond_lock = tourist->ack_travel_condition.mutex_lock();
             int needed_acks = tourist->get_boarded_on_my_submarine_size();
             int received_acks = tourist->increment_received_ack_no();
             Debug::dprintf(*tourist, "Received ACK_TRAVEL from %d, I have %d, need %d",
@@ -245,11 +225,7 @@ void CommunicationLoop::handler_ack_travel() {
                 needed_acks
             );
             if (received_acks == needed_acks) {
-                // tourist->clear_received_ack_no();
-                // tourist->ack_travel_condition.notify(cond_lock);
                 tourist->ack_travel_condition.notify(ConditionVar::NO_VAR);
-            } else {
-                // cond_lock.unlock();
             }
         } else {
             // Only captain should be able to get this message
@@ -257,7 +233,6 @@ void CommunicationLoop::handler_ack_travel() {
         }
     } else if (state == Tourist::TRAVEL) {
         if (tourist->is_capitan()) {
-            // auto cond_lock = tourist->ack_travel_condition.mutex_lock();
             int needed_acks = tourist->get_boarded_on_my_submarine_size();
             int received_acks = tourist->increment_received_ack_no();
             Debug::dprintf(*tourist, "Received ACK_TRAVEL from %d, I have %d, need %d",
@@ -266,8 +241,6 @@ void CommunicationLoop::handler_ack_travel() {
                 needed_acks
             );
             if (received_acks == needed_acks) {
-                // tourist->clear_received_ack_no();
-                // tourist->ack_travel_condition.notify(cond_lock);
                 tourist->ack_travel_condition.notify(ConditionVar::NO_VAR);
             }
         } else {
@@ -283,10 +256,8 @@ void CommunicationLoop::handler_ack_travel() {
 void CommunicationLoop::handler_depart_submar() {
     auto state = tourist->state.safe_get();
     if (state == Tourist::BOARDED) {
-        // auto cond_lock = tourist->travel_condition.mutex_lock();
         Debug::dprintf(*tourist, "Received DEPART_SUBMAR from the captain %d, answering ACK_TRAVEL", packet.get_sender_id());
         Packet(Packet::ACK_TRAVEL).send(*tourist, packet.get_sender_id());
-        // tourist->travel_condition.notify(cond_lock);
         tourist->travel_condition.notify(ConditionVar::NO_VAR);
     } else {
         // This should be impossible, so if we reach this, something went wrong
@@ -298,7 +269,6 @@ void CommunicationLoop::handler_depart_submar() {
 void CommunicationLoop::handler_depart_submar_not_full() {
     auto state = tourist->state.safe_get();
     if (state == Tourist::BOARDED) {
-        // auto cond_lock = tourist->travel_condition.mutex_lock();
         Debug::dprintf(*tourist, "Received DEPART_SUBMAR from the captain %d, answering ACK_TRAVEL", packet.get_sender_id());
         Packet(Packet::ACK_TRAVEL).send(*tourist, packet.get_sender_id());
         // Marking all non-empty submarines as unavailable (without my own submarine)
@@ -312,7 +282,6 @@ void CommunicationLoop::handler_depart_submar_not_full() {
         }
         tourist->available_submarine_list.mutex_unlock();
         tourist->submarine_queues->mutex_unlock();
-        // tourist->travel_condition.notify(cond_lock);
         tourist->travel_condition.notify(ConditionVar::NO_VAR);
     } else {
         // This should be impossible, so if we reach this, something went wrong
