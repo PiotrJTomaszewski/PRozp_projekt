@@ -13,7 +13,6 @@ Tourist::Tourist(int id, int submarine_no) {
     for (int i=0; i<submarine_no; i++) {
         available_submarine_list.unsafe_push_back(true);
     }
-    was_submarine_deadlock_detected = false;
 }
 
 Tourist::~Tourist() {
@@ -86,16 +85,19 @@ int Tourist::get_best_submarine_id(SystemInfo &sys_info) {
 
 bool Tourist::can_board(SystemInfo &sys_info) {
     int space_left = sys_info.get_submarine_capacity(my_submarine_id);
+    int passenger_id;
     submarine_queues->mutex_lock();
     for (int position=0; position<submarine_queues->unsafe_get_size(my_submarine_id); position++) {
-        space_left -= sys_info.get_tourist_size(submarine_queues->unsafe_get_tourist_id(my_submarine_id, position));
+        passenger_id = submarine_queues->unsafe_get_tourist_id(my_submarine_id, position);
+        if (passenger_id == id) break; // Chek only up to my position
+        else space_left -= sys_info.get_tourist_size(passenger_id);
     }
     submarine_queues->mutex_unlock();
     return (space_left >= sys_info.get_tourist_size(get_id()));
 }
 
 bool Tourist::is_capitan() {
-    return (get_id() == submarine_queues->safe_get_tourist_id(my_submarine_id, 0));
+    return (id == submarine_queues->safe_get_tourist_id(my_submarine_id, 0));
 }
 
 void Tourist::fill_boarded_on_my_submarine(SystemInfo &sys_info) {
@@ -129,9 +131,9 @@ void Tourist::fill_suplement_boarded_on_my_submarine(std::list<int> &list, int t
     }
 }
 
-int Tourist::my_submarine_get_captain_id() {
-    return submarine_queues->safe_get_tourist_id(my_submarine_id, 0);
-}
+// int Tourist::my_submarine_get_captain_id() {
+//     return submarine_queues->safe_get_tourist_id(my_submarine_id, 0);
+// }
 
 void Tourist::queue_ack_travel() {
     is_ack_travel_queued = true;
@@ -144,7 +146,27 @@ bool Tourist::get_and_clear_is_ack_travel_queued() {
     return result;
 }
 
-bool Tourist::is_submarine_deadlock(int tourist_no) {
+bool Tourist::is_submarine_deadlock(SystemInfo &sys_info) {
+    // Deadlock won't occur if any submarine is full // TODO: ????
+    bool can_deadlock_occurr = true;
+    submarine_queues->mutex_lock();
+    for (int submarine_id=0; submarine_id<sys_info.get_submarine_no(); submarine_id++) {
+        int space_left = sys_info.get_submarine_capacity(submarine_id);
+        for (int i=0; i<submarine_queues->unsafe_get_size(submarine_id); i++) {
+            int id = submarine_queues->unsafe_get_tourist_id(submarine_id, i);
+            space_left -= sys_info.get_tourist_size(id);
+        }
+        if (space_left <= 0) {
+            can_deadlock_occurr = false;
+            break;
+        }
+    }
+    
+    submarine_queues->mutex_unlock();
+    if (!can_deadlock_occurr) {
+        return false;
+    }
+
     bool is_deadlock = false;
     bool are_all_in_port = true;
     int submarine_no = available_submarine_list.unsafe_get_size();
@@ -162,7 +184,7 @@ bool Tourist::is_submarine_deadlock(int tourist_no) {
         for (int i=0; i<submarine_no; i++) {
             tourists_in_submarines += submarine_queues->unsafe_get_size(i);
         }
-        if (tourists_in_submarines == tourist_no) {
+        if (tourists_in_submarines == std::min(sys_info.get_tourist_no(), sys_info.get_pony_no())) {
             is_deadlock = true;
         }
     }

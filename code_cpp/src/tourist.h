@@ -46,13 +46,12 @@ public:
     void fill_boarded_on_my_submarine(SystemInfo &sys_info);
     int get_boarded_on_my_submarine_size();
     void fill_suplement_boarded_on_my_submarine(std::list<int> &list, int tourist_no);
-    int my_submarine_get_captain_id();
+    std::atomic<int> my_submarine_captain_id;
 
     void queue_ack_travel(); // TODO: Protect from race condition?
     bool get_and_clear_is_ack_travel_queued();
 
-    bool is_submarine_deadlock(int tourist_no);
-    std::atomic<bool> was_submarine_deadlock_detected;
+    bool is_submarine_deadlock(SystemInfo &sys_info);
 
 private:
     int id;

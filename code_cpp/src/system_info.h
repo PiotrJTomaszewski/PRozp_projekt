@@ -19,12 +19,12 @@ public:
 
 private:
 // TODO: Read those from file or sth
-    int pony_no = 2;
+    int pony_no = 5;
     int tourist_no;
     int submar_no = 4;
     int max_try_no = 3;
-    std::vector<int> dict_tourist_sizes = {3, 6, 8, 1, 3};
-    std::vector<int> dict_submar_capacity = {12, 14, 26, 12, 31, 21};
+    std::vector<int> dict_tourist_sizes = {3, 6, 8, 1, 3, 6, 8, 9, 2, 4, 5, 7};
+    std::vector<int> dict_submar_capacity = {11, 14, 26, 12, 31, 21, 12, 44};
     int min_rest_time = 1;
     int max_rest_time = 13;
     int min_travel_time = 3;

@@ -5,25 +5,47 @@
 #include <atomic>
 #include <condition_variable>
 
+#include <pthread.h>
+#include <semaphore.h>
+
 class ConditionVar {
 public:
     ConditionVar();
     ~ConditionVar();
-    std::unique_lock<std::mutex> mutex_lock();
+    // std::unique_lock<std::mutex> mutex_lock();
     // void mutex_unlock();
     // void wait();
     // void wait(std::unique_ptr<std::mutex> cond_lock);
     // void notify();
-    std::condition_variable cond_var;
 
     // inline void notify();
-    void notify(std::unique_lock<std::mutex> &mutex);
-    void wait(std::unique_lock<std::mutex> &mutex);
+    // void notify(std::unique_lock<std::mutex> &mutex);
+    // void wait(std::unique_lock<std::mutex> &mutex);
     // void wait_no_relock(std::unique_lock<std::mutex> &mutex);
 
+    enum ExtraVarType {
+        NO_VAR,
+        DEADLOCK_DETECTED,
+        NO_DEADLOCK_DETECTED,
+        MY_SUBMARINE,
+        ANY_SUBMARINE
+    };
+    void lock_mutex();
+    void unlock_mutex();
+    void notify(ExtraVarType extra);
+    ExtraVarType wait();
+    ExtraVarType wait_for(ExtraVarType value);
+    bool get_is_signal_ready();
+
+
 private:
-    std::mutex cond_mutex;
-    std::atomic<bool> was_signal_sent;
+    // std::condition_variable cond_var;
+    // std::condition_variable cond_var_producer;
+    // std::condition_variable cond_var_consumer;
+    // std::mutex cond_mutex;
+    std::atomic<bool> is_signal_ready;
+    sem_t semaphore;
     // std::unique_lock<std::mutex> cond_lock;
     // TODO: Add a boolean to prevent spourious wakeups
+    std::atomic<ExtraVarType> extra_var;
 };

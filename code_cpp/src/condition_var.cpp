@@ -6,15 +6,17 @@
 ConditionVar::ConditionVar() {
     // cond_lock = std::unique_lock<std::mutex>(cond_mutex);
     // cond_lock.unlock();
+    is_signal_ready = false;
+    sem_init(&semaphore, 0, 0);
 }
 
 ConditionVar::~ConditionVar() {
-
+    sem_destroy(&semaphore);
 }
 
-std::unique_lock<std::mutex> ConditionVar::mutex_lock() {
-    return std::unique_lock<std::mutex>(cond_mutex);
-}
+// std::unique_lock<std::mutex> ConditionVar::mutex_lock() {
+//     return std::unique_lock<std::mutex>(cond_mutex);
+// }
 
 // void ConditionVar::mutex_lock() {
 //     // cond_mutex.lock();
@@ -39,20 +41,20 @@ std::unique_lock<std::mutex> ConditionVar::mutex_lock() {
 //     cond_var.notify_one();
 // }
 
-void ConditionVar::notify(std::unique_lock<std::mutex> &mutex) {
-    was_signal_sent.store(true);
-    cond_var.notify_one();
-    mutex.unlock();
+// void ConditionVar::notify(std::unique_lock<std::mutex> &mutex) {
+//     was_signal_sent = true;
+//     cond_var.notify_one();
+//     mutex.unlock();
 
-}
+// }
 
-void ConditionVar::wait(std::unique_lock<std::mutex> &mutex) {
-    was_signal_sent.store(false);
-    while (!was_signal_sent.load()) {
-        cond_var.wait(mutex);
-        // mutex.lock();
-    }
-}
+// void ConditionVar::wait(std::unique_lock<std::mutex> &mutex) {
+//     while (!was_signal_sent) {
+//         cond_var.wait(mutex);
+//         // mutex.lock();
+//     }
+//     was_signal_sent = false;
+// }
 
 // void ConditionVar::wait_no_relock(std::unique_lock<std::mutex> &mutex) {
 //     was_signal_sent.store(false);
@@ -63,3 +65,29 @@ void ConditionVar::wait(std::unique_lock<std::mutex> &mutex) {
 //         }
 //     }
 // }
+
+
+void ConditionVar::notify(ConditionVar::ExtraVarType extra_var) {
+    // is_signal_ready = true;
+    this->extra_var.store(extra_var);
+    sem_post(&semaphore);
+}
+
+ConditionVar::ExtraVarType ConditionVar::wait() {
+    sem_wait(&semaphore);
+    return extra_var.load();
+    // is_signal_ready = false;
+}
+
+bool ConditionVar::get_is_signal_ready() {
+    return is_signal_ready.load();
+}
+
+ConditionVar::ExtraVarType ConditionVar::wait_for(ConditionVar::ExtraVarType value) {
+    bool should_wait = true;
+    while (should_wait) {
+        sem_wait(&semaphore);
+        should_wait = !(extra_var.load() == value);
+    }
+    return extra_var.load();
+}

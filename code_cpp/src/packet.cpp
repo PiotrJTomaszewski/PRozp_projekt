@@ -36,12 +36,17 @@ void Packet::send(Tourist &me, std::list<int> &destination_list) {
 
 void Packet::send_to_travelling_with_me(Tourist &me) {
     int my_id = me.get_id();
+    int my_submarine_id = me.my_submarine_id.load();
+    int passenger_id;
     data_packet.lamport_clock = me.lamport_clock++;
-    for (int id = 0; id < me.get_boarded_on_my_submarine_size(); id++) {
-        if (my_id == id)
+    me.submarine_queues->mutex_lock();
+    for (int position = 0; position < me.get_boarded_on_my_submarine_size(); position++) {
+        passenger_id = me.submarine_queues->unsafe_get_tourist_id(my_submarine_id, position);
+        if (passenger_id == my_id)
             continue;
-        MPI_Send(&data_packet, sizeof(packet_t), MPI_BYTE, id, 1, MPI_COMM_WORLD);
+        MPI_Send(&data_packet, sizeof(packet_t), MPI_BYTE, passenger_id, 1, MPI_COMM_WORLD);
     }
+    me.submarine_queues->mutex_unlock();
 }
 
 int Packet::broadcast(Tourist &me, int tourists_in_system) {
