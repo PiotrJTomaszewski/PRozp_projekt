@@ -9,8 +9,20 @@ static const char *stateNames[] = {
     "WAIT_SUBMAR", "BOARDED", "TRAVEL", "ON_SHORE" 
 };
 
+void dumpSubmarineQueues(Tourist &tourist) {
+    tourist.submarine_queues->mutex_lock();
+    for (int i=0; i<4; i++) {
+        printf("Submar %d: [", i);
+        for (int j=0; j<tourist.submarine_queues->unsafe_get_size(i); j++) {
+            printf("%d, ", tourist.submarine_queues->unsafe_get_tourist_id(i, j));
+        }
+        printf("]; ");
+    }
+    tourist.submarine_queues->mutex_unlock();
+}
+
 void Debug::dprint( Tourist &tourist, std::string text) {
-    // TODO: Implement colors or sth like that
+    dumpSubmarineQueues(tourist);
     int tourist_id = tourist.get_id();
     if (tourist_id + 1 <= 6) {
     printf("\033[0;3%dmId %d - Clock %d - %s - %s\033[0m\n", tourist_id+1, tourist_id, tourist.lamport_clock.load(), stateNames[tourist.state.unsafe_get()], text.c_str());
@@ -20,6 +32,7 @@ void Debug::dprint( Tourist &tourist, std::string text) {
 }
 
 void Debug::dprintf(Tourist &tourist, std::string format, ...) {
+    dumpSubmarineQueues(tourist);
     va_list args;
     const char *format_c = format.c_str();
     va_start(args, format);
