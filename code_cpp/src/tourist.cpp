@@ -178,7 +178,6 @@ bool Tourist::is_submarine_deadlock(SystemInfo &sys_info) {
             break;
         }
     }
-
     if (are_all_in_port) {
         int tourists_in_submarines = 0;
         for (int i=0; i<submarine_no; i++) {

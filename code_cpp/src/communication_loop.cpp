@@ -167,24 +167,24 @@ void CommunicationLoop::handler_full_submar_retreat() {
 void CommunicationLoop::handler_return_submar() {
     int submarine_id = packet.get_submarine_id();
     int passenger_no = packet.get_passenger_no();
-    Debug::dprintf(*tourist, "Received RETURN_SUBMAR{%d} from %d.", submarine_id, packet.get_sender_id());
+    Debug::dprintf(*tourist, "Received RETURN_SUBMAR{%d} from %d. Removing %d tourists from queue", submarine_id, packet.get_sender_id(), passenger_no);
     tourist->available_submarine_list.safe_set_element(submarine_id, true);
     tourist->submarine_queues->safe_remove_from_begin(submarine_id, passenger_no);
     tourist->state.mutex_lock();
     auto state = tourist->state.unsafe_get();
     if (state == Tourist::CHOOSE_SUBMAR) {
         // TODO: If in CHOOSE_SUMBAR, he should choose this submarine
-        tourist->submarine_return_condition.notify(ConditionVar::ANY_SUBMARINE);
+        tourist->submarine_return_condition.notify(ConditionVar::IN_CHOOSE_SUBMAR);
     } else if (state == Tourist::WAIT_SUBMAR) {
         if (submarine_id == tourist->my_submarine_id.load()) {
-            tourist->submarine_return_condition.notify(ConditionVar::MY_SUBMARINE);
+            tourist->submarine_return_condition.notify(ConditionVar::IN_WAIT_SUBMAR);
         }
     } else if (state == Tourist::TRAVEL) {
         if (submarine_id == tourist->my_submarine_id.load()) {
             int captain_id = packet.get_sender_id();
-            Debug::dprintf(*tourist, "Responing ACK_TRAVEL to the captain (%d)", captain_id);
+            Debug::dprintf(*tourist, "End ouf journey. Responing ACK_TRAVEL to the captain (%d)", captain_id);
             Packet(Packet::ACK_TRAVEL).send(*tourist, captain_id);
-            tourist->submarine_return_condition.notify(ConditionVar::MY_SUBMARINE);
+            tourist->submarine_return_condition.notify(ConditionVar::IN_TRAVEL);
         }
     } else if (state == Tourist::BOARDED) {
         /* This can happen if a tourist thinks he's on board but in reality
@@ -192,7 +192,7 @@ void CommunicationLoop::handler_return_submar() {
         he should check if he became a new captain
         */
        if (submarine_id == tourist->my_submarine_id.load()) {
-           tourist->submarine_depart_condition.notify(ConditionVar::MY_SUBMARINE);
+           tourist->submarine_depart_condition.notify(ConditionVar::SUBMARINE_RETURN);
        }
     }
     tourist->state.mutex_unlock();

@@ -26,7 +26,7 @@ private:
     std::vector<int> dict_tourist_sizes = {3, 6, 8, 1, 3, 6, 8, 9, 2, 4, 5, 7};
     std::vector<int> dict_submar_capacity = {11, 14, 26, 12, 31, 21, 12, 44};
     int min_rest_time = 1;
-    int max_rest_time = 13;
-    int min_travel_time = 3;
-    int max_travel_time = 12;
+    int max_rest_time = 5;
+    int min_travel_time = 1;
+    int max_travel_time = 4;
 };

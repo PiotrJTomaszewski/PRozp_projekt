@@ -30,7 +30,11 @@ public:
         MY_SUBMARINE,
         ANY_SUBMARINE,
         ENOUGH_ACK,
-        ALL_ACK
+        ALL_ACK,
+        SUBMARINE_RETURN,
+        IN_CHOOSE_SUBMAR,
+        IN_WAIT_SUBMAR,
+        IN_TRAVEL
     };
     void lock_mutex();
     void unlock_mutex();
