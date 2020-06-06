@@ -51,6 +51,8 @@ void CommunicationLoop::run() {
             case Packet::DEPART_SUBMAR_NOT_FULL:
                 handler_depart_submar_not_full();
                 break;
+            case Packet::KILL_MESSAGE:
+
             default:
                 handler_wrong_message();
                 break;
@@ -301,5 +303,12 @@ void CommunicationLoop::handler_wrong_message() {
     Debug::dprintf(*tourist, 
         "Received an incorrect or unexpected message (%d) from %d! Stopping!",
         packet.get_message_type(), packet.get_sender_id());
+    Packet(Packet::KILL_MESSAGE).broadcast(*tourist, sys_info->get_tourist_no());
+    run_flag = false;
+}
+
+void CommunicationLoop::handler_kill_message() {
+    Debug::dprintf(*tourist,
+        "Received 'kill message' from %d! Stopping!", packet.get_sender_id());
     run_flag = false;
 }

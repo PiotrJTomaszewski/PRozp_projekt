@@ -19,7 +19,8 @@ public:
         TRAVEL_READY,
         ACK_TRAVEL,
         DEPART_SUBMAR,
-        DEPART_SUBMAR_NOT_FULL
+        DEPART_SUBMAR_NOT_FULL,
+        KILL_MESSAGE
     };
 
     Packet();

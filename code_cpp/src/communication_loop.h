@@ -32,4 +32,5 @@ private:
     void handler_depart_submar_not_full();
     void handler_wrong_message();
     void handler_wrong_state();
+    void handler_kill_message();
 };
