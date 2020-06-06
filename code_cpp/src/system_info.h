@@ -19,7 +19,7 @@ public:
 
 private:
 // TODO: Read those from file or sth
-    int pony_no = 5;
+    int pony_no = 8;
     int tourist_no;
     int submar_no = 4;
     int max_try_no = 3;
