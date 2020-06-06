@@ -27,12 +27,7 @@ public:
     SharedVector<bool> available_submarine_list;
     SharedVector<int> queue_pony;
     std::unique_ptr<QueuesSubmarine> submarine_queues;
-    ConditionVar ack_pony_condition;
-    ConditionVar ack_submar_condition;
-    ConditionVar submarine_return_condition;
-    ConditionVar submarine_should_leave_condition;
-    ConditionVar ack_travel_condition;
-    ConditionVar submarine_depart_condition;
+    ConditionVar cond_var;
     int get_id();
     int increment_try_no();
     int get_try_no();

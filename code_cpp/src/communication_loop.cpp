@@ -100,7 +100,7 @@ void CommunicationLoop::handler_ack_pony() {
         int received_ack = tourist->increment_received_ack_no();
         Debug::dprintf(*tourist, "Received ACK_PONY, I have %d, need %d", received_ack, needed_ack_no);
         if (received_ack == needed_ack_no && needed_ack_no > 1) {
-            tourist->ack_pony_condition.notify(ConditionVar::ENOUGH_ACK);
+            tourist->cond_var.notify(ConditionVar::ENOUGH_ACK_SIGNAL);
         }  else {
             Debug::dprint(*tourist, "Received ACK_PONY, ignoring");
         }
@@ -120,7 +120,7 @@ void CommunicationLoop::handler_req_submar() {
     if (tourist->state.unsafe_get() == Tourist::BOARDED && tourist->is_capitan()) {
         if (tourist->is_submarine_deadlock(*sys_info)) {
             Debug::dprint(*tourist, "Submarine deadlock detected");
-            tourist->submarine_should_leave_condition.notify(ConditionVar::DEADLOCK_DETECTED);
+            tourist->cond_var.notify(ConditionVar::DEADLOCK_DETECTED_SIGNAL);
         }
     }
     tourist->state.mutex_unlock();
@@ -135,7 +135,7 @@ void CommunicationLoop::handler_ack_submar() {
         int received_ack = tourist->increment_received_ack_no();
         Debug::dprintf(*tourist, "Received ACK_SUBMAR from %d, I have %d, need %d", packet.get_sender_id(), received_ack, needed_ack_no);
         if (received_ack == needed_ack_no && needed_ack_no > 1) {
-            tourist->ack_submar_condition.notify(ConditionVar::ALL_ACK);
+            tourist->cond_var.notify(ConditionVar::ALL_ACK_SIGNAL);
         }
     } else {
         // This should be impossible, so if we reach this, something went wrong
@@ -149,7 +149,7 @@ void CommunicationLoop::handler_full_submar_stay() {
     Debug::dprintf(*tourist, "Received FULL_SUBMAR_STAY from %d, marking submarine %d as unavailable", packet.get_sender_id(), submarine_id);
     tourist->available_submarine_list.safe_set_element(submarine_id, false);
     if (tourist->state.safe_get() == Tourist::BOARDED && tourist->is_capitan()) {
-        tourist->submarine_should_leave_condition.notify(ConditionVar::SUBMARINE_FULL);
+        tourist->cond_var.notify(ConditionVar::SUBMARINE_FULL_SIGNAL);
     }
 }
 
@@ -160,7 +160,7 @@ void CommunicationLoop::handler_full_submar_retreat() {
     tourist->available_submarine_list.safe_set_element(submarine_id, false);
     tourist->submarine_queues->safe_remove_tourist_id(submarine_id, sender_id);
     if (tourist->state.safe_get() == Tourist::BOARDED && tourist->is_capitan()) {
-        tourist->submarine_should_leave_condition.notify(ConditionVar::SUBMARINE_FULL);
+        tourist->cond_var.notify(ConditionVar::SUBMARINE_FULL_SIGNAL);
     }
 }
 
@@ -174,17 +174,17 @@ void CommunicationLoop::handler_return_submar() {
     auto state = tourist->state.unsafe_get();
     if (state == Tourist::CHOOSE_SUBMAR) {
         // TODO: If in CHOOSE_SUMBAR, he should choose this submarine
-        tourist->submarine_return_condition.notify(ConditionVar::IN_CHOOSE_SUBMAR);
+        tourist->cond_var.notify(ConditionVar::ANY_SUBMARINE_RETURNED_SIGNAL);
     } else if (state == Tourist::WAIT_SUBMAR) {
         if (submarine_id == tourist->my_submarine_id.load()) {
-            tourist->submarine_return_condition.notify(ConditionVar::IN_WAIT_SUBMAR);
+            tourist->cond_var.notify(ConditionVar::MY_SUBMARINE_RETURNED_SIGNAL);
         }
     } else if (state == Tourist::TRAVEL) {
         if (submarine_id == tourist->my_submarine_id.load()) {
             int captain_id = packet.get_sender_id();
             Debug::dprintf(*tourist, "End ouf journey. Responing ACK_TRAVEL to the captain (%d)", captain_id);
             Packet(Packet::ACK_TRAVEL).send(*tourist, captain_id);
-            tourist->submarine_return_condition.notify(ConditionVar::IN_TRAVEL);
+            tourist->cond_var.notify(ConditionVar::JOURNEY_END_SIGNAL);
         }
     } else if (state == Tourist::BOARDED) {
         /* This can happen if a tourist thinks he's on board but in reality
@@ -192,7 +192,7 @@ void CommunicationLoop::handler_return_submar() {
         he should check if he became a new captain
         */
        if (submarine_id == tourist->my_submarine_id.load()) {
-           tourist->submarine_depart_condition.notify(ConditionVar::SUBMARINE_RETURN);
+           tourist->cond_var.notify(ConditionVar::MY_SUBMARINE_RETURNED_SIGNAL);
        }
     }
     tourist->state.mutex_unlock();
@@ -228,7 +228,7 @@ void CommunicationLoop::handler_ack_travel() {
                 needed_acks
             );
             if (received_acks == needed_acks) {
-                tourist->ack_travel_condition.notify(ConditionVar::ALL_ACK);
+                tourist->cond_var.notify(ConditionVar::ALL_ACK_SIGNAL);
             }
         } else {
             // Only captain should be able to get this message
@@ -244,7 +244,7 @@ void CommunicationLoop::handler_ack_travel() {
                 needed_acks
             );
             if (received_acks == needed_acks) {
-                tourist->ack_travel_condition.notify(ConditionVar::ALL_ACK);
+                tourist->cond_var.notify(ConditionVar::ALL_ACK_SIGNAL);
             }
         } else {
             // Only captain should be able to get this message
@@ -261,7 +261,7 @@ void CommunicationLoop::handler_depart_submar() {
     if (state == Tourist::BOARDED) {
         Debug::dprintf(*tourist, "Received DEPART_SUBMAR from the captain %d, answering ACK_TRAVEL", packet.get_sender_id());
         Packet(Packet::ACK_TRAVEL).send(*tourist, packet.get_sender_id());
-        tourist->submarine_depart_condition.notify(ConditionVar::MY_SUBMARINE);
+        tourist->cond_var.notify(ConditionVar::JOURNEY_START_SIGNAL);
     } else {
         // This should be impossible, so if we reach this, something went wrong
         handler_wrong_message();
@@ -284,7 +284,7 @@ void CommunicationLoop::handler_depart_submar_not_full() {
         }
         tourist->available_submarine_list.mutex_unlock();
         tourist->submarine_queues->mutex_unlock();
-        tourist->submarine_depart_condition.notify(ConditionVar::MY_SUBMARINE);
+        tourist->cond_var.notify(ConditionVar::JOURNEY_START_SIGNAL);
     } else {
         // This should be impossible, so if we reach this, something went wrong
         // resting, wait_pony, choose_submar, wait_submar

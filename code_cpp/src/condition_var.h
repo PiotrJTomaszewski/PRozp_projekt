@@ -6,52 +6,30 @@
 #include <condition_variable>
 
 #include <pthread.h>
-#include <semaphore.h>
 
 class ConditionVar {
 public:
     ConditionVar();
     ~ConditionVar();
-    // std::unique_lock<std::mutex> mutex_lock();
-    // void mutex_unlock();
-    // void wait();
-    // void wait(std::unique_ptr<std::mutex> cond_lock);
-    // void notify();
-
-    // inline void notify();
-    // void notify(std::unique_lock<std::mutex> &mutex);
-    // void wait(std::unique_lock<std::mutex> &mutex);
-    // void wait_no_relock(std::unique_lock<std::mutex> &mutex);
-
-    enum ExtraVarType {
-        NO_VAR,
-        DEADLOCK_DETECTED,
-        SUBMARINE_FULL,
-        MY_SUBMARINE,
-        ANY_SUBMARINE,
-        ENOUGH_ACK,
-        ALL_ACK,
-        SUBMARINE_RETURN,
-        IN_CHOOSE_SUBMAR,
-        IN_WAIT_SUBMAR,
-        IN_TRAVEL
+    enum signal_t {
+        NO_SIGNAL = 0x00,
+        ENOUGH_ACK_SIGNAL = 0x01,
+        ALL_ACK_SIGNAL = 0x02,
+        ANY_SUBMARINE_RETURNED_SIGNAL = 0x04,
+        MY_SUBMARINE_RETURNED_SIGNAL = 0x08,
+        SUBMARINE_FULL_SIGNAL = 0x10,
+        DEADLOCK_DETECTED_SIGNAL = 0x20,
+        JOURNEY_START_SIGNAL = 0x40,
+        JOURNEY_END_SIGNAL = 0x80,
+        ANY_SIGNAL = 0xff
     };
-    void lock_mutex();
-    void unlock_mutex();
-    void notify(ExtraVarType extra);
-    ExtraVarType wait();
-    ExtraVarType wait_for(ExtraVarType value);
-    bool get_is_signal_ready();
-
+    void notify(signal_t signal);
+    signal_t wait_for(signal_t awaited_signals);
+    signal_t wait_for(int awaited_signals);
 
 private:
-    // std::condition_variable cond_var;
-    // std::condition_variable cond_var_producer;
-    // std::condition_variable cond_var_consumer;
-    // std::mutex cond_mutex;
-    std::atomic<bool> is_signal_ready;
-    sem_t semaphore;
-    // std::unique_lock<std::mutex> cond_lock;
-    // TODO: Add a boolean to prevent spourious wakeups
-    std::atomic<ExtraVarType> extra_var;
+    signal_t signal;
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+
 };

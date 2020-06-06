@@ -74,7 +74,7 @@ void MainLoop::handler_wait_pony() {
     if (needed_ack <= 1) {
         Debug::dprint(*tourist, "There is enough pony suits for everyone, so I'm taking one");
     } else {
-        tourist->ack_pony_condition.wait_for(ConditionVar::ENOUGH_ACK);
+        tourist->cond_var.wait_for(ConditionVar::ENOUGH_ACK_SIGNAL);
         Debug::dprint(*tourist, "Received enough ACK_PONY, getting a suit and changing state to CHOOSE_SUBMAR");
     }
     tourist->state.safe_set(Tourist::CHOOSE_SUBMAR);
@@ -94,7 +94,7 @@ void MainLoop::handler_choose_submar() {
         tourist->state.mutex_unlock();
     } else {
         Debug::dprint(*tourist, "No free submarine found, waiting for one to return");
-        tourist->submarine_return_condition.wait_for(ConditionVar::IN_CHOOSE_SUBMAR);
+        tourist->cond_var.wait_for(ConditionVar::ANY_SUBMARINE_RETURNED_SIGNAL);
         Debug::dprint(*tourist, "I've noticed that a submarine has returned, waking up"); // TODO: Tourist HAS TO select this submarine
     }
 }
@@ -104,7 +104,7 @@ void MainLoop::handler_wait_submar() {
         Debug::dprint(*tourist, "I'm the only tourist in the system and I have my own permission");
     } else {
         Debug::dprintf(*tourist, "Waiting for access to the %d submarine", tourist->my_submarine_id.load());
-        tourist->ack_submar_condition.wait_for(ConditionVar::ALL_ACK);
+        tourist->cond_var.wait_for(ConditionVar::ALL_ACK_SIGNAL);
     }
     if (tourist->can_board_my_submarine(*sys_info)) {
         Debug::dprintf(*tourist, "Can board %d, changing state to BOARDED", tourist->my_submarine_id.load());
@@ -123,7 +123,7 @@ void MainLoop::handler_wait_submar() {
             while (!can_board) {
                 Debug::dprintf(*tourist, "Can't fit in %d but I've given up and decided to wait. Broadcasting FULL_SUBMARINE_STAY", tourist->my_submarine_id.load());
                 Packet(Packet::FULL_SUBMAR_STAY, tourist->my_submarine_id.load()).broadcast(*tourist, sys_info->get_tourist_no());
-                tourist->submarine_return_condition.wait_for(ConditionVar::IN_WAIT_SUBMAR);
+                tourist->cond_var.wait_for(ConditionVar::MY_SUBMARINE_RETURNED_SIGNAL);
                 if (tourist->can_board_my_submarine(*sys_info)) {
                     Debug::dprintf(*tourist, "The submarine %d has returned, boarding now", tourist->my_submarine_id.load());
                     can_board = true;
@@ -142,19 +142,19 @@ void MainLoop::handler_boarded() {
         // bool deadlock_detected = tourist->is_submarine_deadlock(*sys_info);
         // if (!deadlock_detected) {
         Debug::dprintf(*tourist, "I'm a captain of %d, waiting for the submarine to get full", my_submarine_id);
-        auto wait_val = tourist->submarine_should_leave_condition.wait();
-        bool deadlock_detected = (wait_val == ConditionVar::DEADLOCK_DETECTED);
+        auto wait_val = tourist->cond_var.wait_for(ConditionVar::SUBMARINE_FULL_SIGNAL | ConditionVar::DEADLOCK_DETECTED_SIGNAL);
+        bool deadlock_detected = ((wait_val & ConditionVar::DEADLOCK_DETECTED_SIGNAL) != 0);
         // }
         tourist->fill_boarded_on_my_submarine(*sys_info);
         if (tourist->get_boarded_on_my_submarine_size() == 1) {
-            Debug::dprintf(*tourist, "Submarine %d is full and I'm alone, changing state to TRAVEL", my_submarine_id);
+            Debug::dprintf(*tourist, "Submarine %d is ready to depart and I'm alone, changing state to TRAVEL", my_submarine_id);
             tourist->state.safe_set(Tourist::TRAVEL);
         } else {
-            Debug::dprintf(*tourist, "Submarine %d is full, asking for permission to start a journey", my_submarine_id);
+            Debug::dprintf(*tourist, "Submarine %d is ready to depart, asking for permission to start a journey", my_submarine_id);
             tourist->clear_received_ack_no();
             Packet(Packet::TRAVEL_READY).send_to_travelling_with_me(*tourist);
             Debug::dprint(*tourist, "Waiting for answers");
-            tourist->ack_travel_condition.wait_for(ConditionVar::ALL_ACK);
+            tourist->cond_var.wait_for(ConditionVar::ALL_ACK_SIGNAL);
             Debug::dprint(*tourist, "Received all of the ACK_TRAVEL");
             Packet::msg_t msg_type;
             if (deadlock_detected) {
@@ -167,7 +167,7 @@ void MainLoop::handler_boarded() {
             tourist->clear_received_ack_no();
             Packet(msg_type).send_to_travelling_with_me(*tourist);
             Debug::dprint(*tourist, "Waiting for answers");
-            tourist->ack_travel_condition.wait_for(ConditionVar::ALL_ACK);
+            tourist->cond_var.wait_for(ConditionVar::ALL_ACK_SIGNAL);
             Debug::dprint(*tourist, "Received all of the ACK_TRAVEL, changing state to TRAVEL");
             tourist->state.safe_set(Tourist::TRAVEL);
         }
@@ -176,9 +176,8 @@ void MainLoop::handler_boarded() {
             Debug::dprintf(*tourist, "Sending queued ACK_TRAVEL to the captain of %d", my_submarine_id);
             Packet(Packet::ACK_TRAVEL).send(*tourist, tourist->my_submarine_captain_id.load());
         }
-        bool can_wake_up = false;
-        auto wait_var = tourist->submarine_depart_condition.wait();
-        if (wait_var == ConditionVar::SUBMARINE_RETURN) { // Tourist thought he was boarded, but really wasn't
+        auto wait_var = tourist->cond_var.wait_for(ConditionVar::MY_SUBMARINE_RETURNED_SIGNAL | ConditionVar::JOURNEY_START_SIGNAL);
+        if ((wait_var & ConditionVar::MY_SUBMARINE_RETURNED_SIGNAL) != 0) { // Tourist thought he was boarded, but really wasn't
 
         } else {
             Debug::dprint(*tourist, "Changing state to TRAVEL");
@@ -200,7 +199,7 @@ void MainLoop::handler_travel() {
             tourist->clear_received_ack_no();
             Packet(Packet::RETURN_SUBMAR, my_submarine_id, on_my_submarine).send_to_travelling_with_me(*tourist);
             Debug::dprint(*tourist, "Waiting for all of the ACK_TRAVEL responses");
-            tourist->ack_travel_condition.wait_for(ConditionVar::ALL_ACK);
+            tourist->cond_var.wait_for(ConditionVar::ALL_ACK_SIGNAL);
             Debug::dprint(*tourist, "Received all of the ACK_TRAVEL responses, informing other tourists");
             std::list<int> to_send_list;
             tourist->fill_suplement_boarded_on_my_submarine(to_send_list, sys_info->get_tourist_no());
@@ -212,7 +211,7 @@ void MainLoop::handler_travel() {
         tourist->submarine_queues->safe_remove_from_begin(my_submarine_id, on_my_submarine);
     } else {
         Debug::dprint(*tourist, "Waiting for the journey to end");
-        tourist->submarine_return_condition.wait_for(ConditionVar::IN_TRAVEL);
+        tourist->cond_var.wait_for(ConditionVar::JOURNEY_END_SIGNAL);
     }
     Debug::dprint(*tourist, "Getting on shore");
     tourist->state.safe_set(Tourist::ON_SHORE);

@@ -3,7 +3,7 @@ echo "Compiling on localhost"
 make clean || true
 ./compile.sh &
 echo "Deploying"
-for MACHINE in "192.168.100.235" "192.168.100.236" "192.168.100.153"
+for MACHINE in "192.168.100.235" "192.168.100.236"
 do
 	cat .deploy.sh | ssh "$MACHINE" &
 done
