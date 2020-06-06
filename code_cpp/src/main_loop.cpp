@@ -139,12 +139,12 @@ void MainLoop::handler_wait_submar() {
 void MainLoop::handler_boarded() {
     int my_submarine_id = tourist->my_submarine_id.load();
     if (tourist->is_capitan()) { // TODO: Sometimes he can be that last passenger
-        // bool deadlock_detected = tourist->is_submarine_deadlock(*sys_info);
-        // if (!deadlock_detected) {
+        bool deadlock_detected = tourist->is_submarine_deadlock(*sys_info);
+        if (!deadlock_detected) {
         Debug::dprintf(*tourist, "I'm a captain of %d, waiting for the submarine to get full", my_submarine_id);
         auto wait_val = tourist->cond_var.wait_for(ConditionVar::SUBMARINE_FULL_SIGNAL | ConditionVar::DEADLOCK_DETECTED_SIGNAL);
-        bool deadlock_detected = ((wait_val & ConditionVar::DEADLOCK_DETECTED_SIGNAL) != 0);
-        // }
+        deadlock_detected = ((wait_val & ConditionVar::DEADLOCK_DETECTED_SIGNAL) != 0);
+        }
         tourist->fill_boarded_on_my_submarine(*sys_info);
         if (tourist->get_boarded_on_my_submarine_size() == 1) {
             Debug::dprintf(*tourist, "Submarine %d is ready to depart and I'm alone, changing state to TRAVEL", my_submarine_id);
