@@ -1,10 +1,5 @@
 #pragma once
 
-#include <mutex>
-#include <memory>
-#include <atomic>
-#include <condition_variable>
-
 #include <pthread.h>
 
 class ConditionVar {
@@ -24,11 +19,11 @@ public:
         ANY_SIGNAL = 0xff
     };
     void notify(signal_t signal);
-    signal_t wait_for(signal_t awaited_signals);
-    signal_t wait_for(int awaited_signals);
+    int wait_for(int awaited_signals);
+    int wait_for(signal_t awaited_signal);
 
 private:
-    signal_t signal;
+    int signal;
     pthread_mutex_t mutex;
     pthread_cond_t cond;
 

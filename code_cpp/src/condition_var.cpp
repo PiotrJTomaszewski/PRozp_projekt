@@ -1,6 +1,3 @@
-#include <memory>
-#include <mutex>
-
 #include "condition_var.h"
 
 ConditionVar::ConditionVar() {
@@ -15,29 +12,25 @@ ConditionVar::~ConditionVar() {
 }
 
 void ConditionVar::notify(signal_t new_signal) {
-    signal_t old_signal;
     pthread_mutex_lock(&mutex);
-    old_signal = signal;
-    signal = new_signal;
+    signal |= static_cast<int>(new_signal);
     pthread_mutex_unlock(&mutex);
-    // if (old_signal == NO_SIGNAL) {
-        pthread_cond_signal(&cond);
-    // }
+    pthread_cond_signal(&cond);
 }
 
-ConditionVar::signal_t ConditionVar::wait_for(signal_t awaited_signals) {
-    signal_t encountered_signal;
+int ConditionVar::wait_for(int awaited_signals) {
+    int encountered_signal;
     pthread_mutex_lock(&mutex);
     // Thread can wait for more than one type of signal, hence this binary and
     while ((signal & awaited_signals) == 0) {
         pthread_cond_wait(&cond, &mutex);
     }
     encountered_signal = signal;
-    signal = NO_SIGNAL;
+    signal = 0x00;
     pthread_mutex_unlock(&mutex);
     return encountered_signal;
 }
 
-ConditionVar::signal_t ConditionVar::wait_for(int awaited_signals) {
-    return wait_for(static_cast<signal_t>(awaited_signals));
+int ConditionVar::wait_for(signal_t awaited_signal) {
+    return wait_for(static_cast<int>(awaited_signal));
 }
