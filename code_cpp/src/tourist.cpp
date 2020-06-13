@@ -6,7 +6,7 @@ Tourist::Tourist(int id, int submarine_no) {
     this->id = id;
     submarine_queues = std::unique_ptr<QueuesSubmarine>(new QueuesSubmarine(submarine_no));
     received_ack_no = 1;
-    is_ack_travel_queued = false;
+    is_ack_travel_queued = -1;
     lamport_clock = 0;
     state.unsafe_set(RESTING);
     is_my_submarine_full = false;
