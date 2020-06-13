@@ -9,9 +9,10 @@ static const char *stateNames[] = {
     "WAIT_SUBMAR", "BOARDED", "TRAVEL", "ON_SHORE" 
 };
 
-void dumpSubmarineQueues(Tourist &tourist) {
+#ifdef DEBUG_SHOW_SUBMAR_QUEUE
+void printSubmarineQueues(Tourist &tourist) {
     tourist.submarine_queues->mutex_lock();
-    for (int i=0; i<4; i++) {
+    for (int i=0; i<6; i++) {
         printf("Submar %d: [", i);
         for (int j=0; j<tourist.submarine_queues->unsafe_get_size(i); j++) {
             printf("%d, ", tourist.submarine_queues->unsafe_get_tourist_id(i, j));
@@ -20,25 +21,40 @@ void dumpSubmarineQueues(Tourist &tourist) {
     }
     tourist.submarine_queues->mutex_unlock();
 }
+#endif //DEBUG_SHOW_SUBMAR_QUEUE
+
+#ifdef DEBUG_USE_COLOR
+const int colors_count = 14;
+const char* colors[] = {"0;31", "0;32", "0;33", "0;34", "0;35", "0;36", "0;37", "1;30", "1;31", "1;32", "1;33", "1;34", "1;35", "1;36"};
+#endif //DEBUG_USE_COLOR
 
 void Debug::dprint( Tourist &tourist, std::string text) {
-    dumpSubmarineQueues(tourist);
+    #ifdef DEBUG_SHOW_SUBMAR_QUEUE
+    printSubmarineQueues(tourist);
+    #endif //DEBUG_SHOW_SUBMAR_QUEUE
     int tourist_id = tourist.get_id();
-    if (tourist_id + 1 <= 6) {
-    printf("\033[0;3%dmId %d - Clock %d - %s - %s\033[0m\n", tourist_id+1, tourist_id, tourist.lamport_clock.load(), stateNames[tourist.state.unsafe_get()], text.c_str());
+    #ifdef DEBUG_USE_COLOR
+    if (tourist_id < colors_count) {
+    printf("\033[%smId %d - Clock %d - %s - %s\033[0m\n", colors[tourist_id], tourist_id, tourist.lamport_clock.load(), stateNames[tourist.state.unsafe_get()], text.c_str());
     } else {
     printf("Id %d - Clock %d - %s - %s\n", tourist_id, tourist.lamport_clock.load(), stateNames[tourist.state.unsafe_get()], text.c_str());
     }
+    #else //DEBUG_USE_COLOR
+    printf("Id %d - Clock %d - %s - %s\n", tourist_id, tourist.lamport_clock.load(), stateNames[tourist.state.unsafe_get()], text.c_str());
+    #endif //DEBUG_USE_COLOR
 }
 
 void Debug::dprintf(Tourist &tourist, std::string format, ...) {
-    dumpSubmarineQueues(tourist);
+    #ifdef DEBUG_SHOW_SUBMAR_QUEUE
+    printSubmarineQueues(tourist);
+    #endif //DEBUG_SHOW_SUBMAR_QUEUE
     va_list args;
     const char *format_c = format.c_str();
     va_start(args, format);
     int tourist_id = tourist.get_id();
-    if (tourist_id + 1 <= 6) {
-        printf("\033[0;3%dmId %d - Clock %d - %s - ", tourist_id+1, tourist_id, tourist.lamport_clock.load(), stateNames[tourist.state.unsafe_get()]);
+    #ifdef DEBUG_USE_COLOR
+    if (tourist_id < colors_count) {
+        printf("\033[%smId %d - Clock %d - %s - ", colors[tourist_id], tourist_id, tourist.lamport_clock.load(), stateNames[tourist.state.unsafe_get()]);
         vprintf(format_c, args);
         puts("\033[0m");
     } else {
@@ -46,5 +62,10 @@ void Debug::dprintf(Tourist &tourist, std::string format, ...) {
         vprintf(format_c, args);
         puts(""); // Print new line
     }
+    #else //DEBUG_USE_COLOR
+    printf("Id %d - Clock %d - %s - ", tourist_id, tourist.lamport_clock.load(), stateNames[tourist.state.unsafe_get()]);
+    vprintf(format_c, args);
+    puts(""); // Print new line
+    #endif //DEBUG_USE_COLOR
     va_end(args);
 }

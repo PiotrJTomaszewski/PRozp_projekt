@@ -6,8 +6,7 @@ QueuesSubmarine::QueuesSubmarine(int submarines_no) {
     queues = std::unique_ptr<std::vector<Element>[]>(new std::vector<Element>[submarines_no]);
 }
 
-QueuesSubmarine::~QueuesSubmarine() {
-}
+QueuesSubmarine::~QueuesSubmarine() {}
 
 void QueuesSubmarine::mutex_lock() {
     mutex.lock();
@@ -17,6 +16,7 @@ void QueuesSubmarine::mutex_unlock() {
     mutex.unlock();
 }
 
+// Has pair (timestamp, tourist_id) element1 lower priority than pair element2
 bool QueuesSubmarine::is_lower_priority(Element element1, Element element2) {
     if (element1.tourist_clock > element2.tourist_clock) {
         return true;
@@ -44,6 +44,7 @@ int QueuesSubmarine::safe_get_size(int submarine_id) {
     return queues[submarine_id].size();
 }
 
+// Remove first 'number' elements from given submarine's queue
 void QueuesSubmarine::safe_remove_from_begin(int submarine_id, int number) {
     std::lock_guard<std::mutex> guard(mutex);
     auto begin = queues[submarine_id].begin();
@@ -51,6 +52,7 @@ void QueuesSubmarine::safe_remove_from_begin(int submarine_id, int number) {
 }
 
 void QueuesSubmarine::safe_remove_tourist_id(int submarine_id, int tourist_id) {
+    std::lock_guard<std::mutex> guard(mutex);
     int position;
     for (position = 0; position < static_cast<int>(queues[submarine_id].size()); position++) {
         if (tourist_id == queues[submarine_id][position].tourist_id) break;
@@ -58,9 +60,11 @@ void QueuesSubmarine::safe_remove_tourist_id(int submarine_id, int tourist_id) {
     queues[submarine_id].erase(queues[submarine_id].begin() + position);
 }
 
+// Inserts new tourist at correct position into given submarine's queue.
+// Tourists should be ordered by priority
 void QueuesSubmarine::unsafe_add(int submarine_id, int tourist_id, int tourist_clock) {
     Element new_tourist_element = {tourist_id, tourist_clock};
-    auto position = std::find_if(queues[submarine_id].begin(), queues[submarine_id].end(), 
+    auto position = std::find_if(queues[submarine_id].begin(), queues[submarine_id].end(),
         [new_tourist_element](QueuesSubmarine::Element x){return QueuesSubmarine::is_lower_priority(x, new_tourist_element);}
     );
     queues[submarine_id].insert(position, new_tourist_element);

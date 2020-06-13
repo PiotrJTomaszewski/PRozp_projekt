@@ -4,9 +4,7 @@ SystemInfo::SystemInfo(int tourist_no) {
     this->tourist_no = tourist_no;
 }
 
-SystemInfo::~SystemInfo() {
-    
-}
+SystemInfo::~SystemInfo() {}
 
 int SystemInfo::get_pony_no() {
     return pony_no;

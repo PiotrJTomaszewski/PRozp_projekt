@@ -19,40 +19,14 @@ MainLoop::~MainLoop() {
 
 }
 
-void MainLoop::lock_if_needed(std::unique_lock<std::mutex> &mutex) {
-    if (!mutex.owns_lock()) {
-        mutex.lock();
-    }
-}
-
-
 void MainLoop::run() {
     while (run_flag) {
-        switch (tourist->state.safe_get()) { // TODO: Maybe change to lookup?
-        case Tourist::RESTING:
-            handler_resting();
-            break;
-        case Tourist::WAIT_PONY:
-            handler_wait_pony();
-            break;
-        case Tourist::CHOOSE_SUBMAR:
-            handler_choose_submar();
-            break;
-        case Tourist::WAIT_SUBMAR:
-            handler_wait_submar();
-            break;
-        case Tourist::BOARDED:
-            handler_boarded();
-            break;
-        case Tourist::TRAVEL:
-            handler_travel();
-            break;
-        case Tourist::ON_SHORE:
-            handler_on_shore();
-            break;
-        default:
+        auto state = tourist->state.unsafe_get(); // State can change only be changed in main loop, so no need to lock
+        if (state < Tourist::RESTING || state > Tourist::ON_SHORE) {
             handler_wrong_state();
-            break;
+        } else {
+            auto func = lookup[static_cast<int>(state)];
+            (this->*func)();
         }
     }
 }
@@ -63,7 +37,7 @@ void MainLoop::handler_resting() {
     std::this_thread::sleep_for(std::chrono::seconds(resting_time));
     Debug::dprint(*tourist, "Woke up. Requesting a pony suit and changing state to WAIT_PONY");
     tourist->state.mutex_lock();
-    tourist->clear_received_ack_no();
+    tourist->received_ack_no = 1;
     tourist->my_req_pony_timestamp = Packet(Packet::REQ_PONY).broadcast(*tourist, sys_info->get_tourist_no());
     tourist->state.unsafe_set(Tourist::WAIT_PONY);
     tourist->state.mutex_unlock();
@@ -82,21 +56,15 @@ void MainLoop::handler_wait_pony() {
 
 void MainLoop::handler_choose_submar() {
     int submarine_id = tourist->get_best_submarine_id(*sys_info);
-    if (submarine_id >= 0) {
-        Debug::dprintf(*tourist, "I've chosen a submarine with id %d, asking for permission", submarine_id);
-        tourist->my_submarine_id = submarine_id;
-        tourist->state.mutex_lock();
-        tourist->clear_received_ack_no();
-        int req_timestamp = Packet(Packet::REQ_SUBMAR, submarine_id).broadcast(*tourist, sys_info->get_tourist_no());
-        tourist->submarine_queues->safe_add(tourist->my_submarine_id.load(), tourist->get_id(), req_timestamp);
-        Debug::dprint(*tourist, "Changing state to WAIT_SUBMAR");
-        tourist->state.unsafe_set(Tourist::WAIT_SUBMAR);
-        tourist->state.mutex_unlock();
-    } else {
-        Debug::dprint(*tourist, "No free submarine found, waiting for one to return");
-        tourist->cond_var.wait_for(ConditionVar::ANY_SUBMARINE_RETURNED_SIGNAL);
-        Debug::dprint(*tourist, "I've noticed that a submarine has returned, waking up"); // TODO: Tourist HAS TO select this submarine
-    }
+    Debug::dprintf(*tourist, "I've chosen a submarine with id %d, asking for permission", submarine_id);
+    tourist->my_submarine_id = submarine_id;
+    tourist->state.mutex_lock();
+    tourist->received_ack_no = 1;
+    int req_timestamp = Packet(Packet::REQ_SUBMAR, submarine_id).broadcast(*tourist, sys_info->get_tourist_no());
+    tourist->submarine_queues->safe_add(tourist->my_submarine_id.load(), tourist->get_id(), req_timestamp);
+    Debug::dprint(*tourist, "Changing state to WAIT_SUBMAR");
+    tourist->state.unsafe_set(Tourist::WAIT_SUBMAR);
+    tourist->state.mutex_unlock();
 }
 
 void MainLoop::handler_wait_submar() {
@@ -110,7 +78,7 @@ void MainLoop::handler_wait_submar() {
         Debug::dprintf(*tourist, "Can board %d, changing state to BOARDED", tourist->my_submarine_id.load());
         tourist->state.safe_set(Tourist::BOARDED);
     } else {
-        if (tourist->increment_try_no() < sys_info->get_max_try_no()) {
+        if (++try_no < sys_info->get_max_try_no()) {
             tourist->available_submarine_list.safe_set_element(false, tourist->my_submarine_id.load());
             tourist->submarine_queues->safe_remove_tourist_id(tourist->my_submarine_id.load(), tourist->get_id());
             Debug::dprintf(*tourist, "Can't board %d, trying another one, so broadcasting FULL_SUBMARINE_RETREAT and changing state to CHOOSE_SUBMAR", tourist->my_submarine_id.load());
@@ -137,21 +105,24 @@ void MainLoop::handler_wait_submar() {
 }
 
 void MainLoop::handler_boarded() {
+    try_no = 0;
     int my_submarine_id = tourist->my_submarine_id.load();
-    if (tourist->is_capitan()) { // TODO: Sometimes he can be that last passenger
+    if (tourist->is_capitan()) {
         bool deadlock_detected = tourist->is_submarine_deadlock(*sys_info);
         if (!deadlock_detected) {
         Debug::dprintf(*tourist, "I'm a captain of %d, waiting for the submarine to get full", my_submarine_id);
         auto wait_val = tourist->cond_var.wait_for(ConditionVar::SUBMARINE_FULL_SIGNAL | ConditionVar::DEADLOCK_DETECTED_SIGNAL);
         deadlock_detected = ((wait_val & ConditionVar::DEADLOCK_DETECTED_SIGNAL) != 0);
+        } else {
+            Debug::dprint(*tourist, "Submarine deadlock detected!");
         }
         tourist->fill_boarded_on_my_submarine(*sys_info);
-        if (tourist->get_boarded_on_my_submarine_size() == 1) {
+        if (tourist->boarded_on_my_submarine.unsafe_get_size() == 1) { // This vector's size can only be changed in one place - the line above
             Debug::dprintf(*tourist, "Submarine %d is ready to depart and I'm alone, changing state to TRAVEL", my_submarine_id);
             tourist->state.safe_set(Tourist::TRAVEL);
         } else {
             Debug::dprintf(*tourist, "Submarine %d is ready to depart, asking for permission to start a journey", my_submarine_id);
-            tourist->clear_received_ack_no();
+            tourist->received_ack_no = 1;
             Packet(Packet::TRAVEL_READY).send_to_travelling_with_me(*tourist);
             Debug::dprint(*tourist, "Waiting for answers");
             tourist->cond_var.wait_for(ConditionVar::ALL_ACK_SIGNAL);
@@ -164,7 +135,7 @@ void MainLoop::handler_boarded() {
                 msg_type = Packet::DEPART_SUBMAR;
                 Debug::dprintf(*tourist, "Informing passengers on %d that the submarine is leaving", my_submarine_id);
             }
-            tourist->clear_received_ack_no();
+            tourist->received_ack_no = 1;
             Packet(msg_type).send_to_travelling_with_me(*tourist);
             Debug::dprint(*tourist, "Waiting for answers");
             tourist->cond_var.wait_for(ConditionVar::ALL_ACK_SIGNAL);
@@ -172,16 +143,17 @@ void MainLoop::handler_boarded() {
             tourist->state.safe_set(Tourist::TRAVEL);
         }
     } else {
-        if (tourist->get_and_clear_is_ack_travel_queued()) {
+        if (tourist->is_ack_travel_queued.load() == tourist->my_submarine_id.load()) {
             Debug::dprintf(*tourist, "Sending queued ACK_TRAVEL to the captain of %d", my_submarine_id);
-            Packet(Packet::ACK_TRAVEL).send(*tourist, tourist->my_submarine_captain_id.load());
+            Packet(Packet::ACK_TRAVEL).send(*tourist, tourist->submarine_queues->safe_get_tourist_id(tourist->my_submarine_id, 0));
         }
+        tourist->is_ack_travel_queued.store(-1);
         auto wait_var = tourist->cond_var.wait_for(ConditionVar::MY_SUBMARINE_RETURNED_SIGNAL | ConditionVar::JOURNEY_START_SIGNAL);
-        if ((wait_var & ConditionVar::MY_SUBMARINE_RETURNED_SIGNAL) != 0) { // Tourist thought he was boarded, but really wasn't
-
-        } else {
+        if ((wait_var & ConditionVar::JOURNEY_START_SIGNAL) != 0) {
             Debug::dprint(*tourist, "Changing state to TRAVEL");
             tourist->state.safe_set(Tourist::TRAVEL);
+        } else {
+            Debug::dprintf(*tourist, "My submarine (%d) has returned and I wasn't travelling", my_submarine_id);
         }
     }
 }
@@ -193,22 +165,22 @@ void MainLoop::handler_travel() {
         int travel_time = random_travel_time();
         Debug::dprintf(*tourist, "Journey on %d will take %d seconds", my_submarine_id, travel_time);
         std::this_thread::sleep_for(std::chrono::seconds(travel_time));
-        int on_my_submarine = tourist->get_boarded_on_my_submarine_size();
-        if (on_my_submarine > 1) {
+        int on_my_submarine_size = tourist->boarded_on_my_submarine.safe_get_size();
+        if (on_my_submarine_size > 1) {
             Debug::dprintf(*tourist, "Journey on %d has ended, informing passengers", my_submarine_id);
-            tourist->clear_received_ack_no();
-            Packet(Packet::RETURN_SUBMAR, my_submarine_id, on_my_submarine).send_to_travelling_with_me(*tourist);
+            tourist->received_ack_no = 1;
+            Packet(Packet::RETURN_SUBMAR, my_submarine_id, on_my_submarine_size).send_to_travelling_with_me(*tourist);
             Debug::dprint(*tourist, "Waiting for all of the ACK_TRAVEL responses");
             tourist->cond_var.wait_for(ConditionVar::ALL_ACK_SIGNAL);
             Debug::dprint(*tourist, "Received all of the ACK_TRAVEL responses, informing other tourists");
             std::list<int> to_send_list;
             tourist->fill_suplement_boarded_on_my_submarine(to_send_list, sys_info->get_tourist_no());
-            Packet(Packet::RETURN_SUBMAR, my_submarine_id, on_my_submarine).send(*tourist, to_send_list);
+            Packet(Packet::RETURN_SUBMAR, my_submarine_id, on_my_submarine_size).send(*tourist, to_send_list);
         } else {
             Debug::dprintf(*tourist, "Journey on %d has ended, there is no one with me on board. Informing all about the fact", my_submarine_id);
             Packet(Packet::RETURN_SUBMAR, my_submarine_id, 1).broadcast(*tourist, sys_info->get_tourist_no());
         }
-        tourist->submarine_queues->safe_remove_from_begin(my_submarine_id, on_my_submarine);
+        tourist->submarine_queues->safe_remove_from_begin(my_submarine_id, on_my_submarine_size);
     } else {
         Debug::dprint(*tourist, "Waiting for the journey to end");
         tourist->cond_var.wait_for(ConditionVar::JOURNEY_END_SIGNAL);
@@ -218,16 +190,15 @@ void MainLoop::handler_travel() {
 }
 
 void MainLoop::handler_on_shore() {
-    tourist->queue_pony.mutex_lock();
-    int acks_to_send = tourist->queue_pony.unsafe_get_size();
+    int acks_to_send = tourist->queue_pony.size();
     if (acks_to_send > 0) {
         Packet packet(Packet::ACK_PONY);
         Debug::dprintf(*tourist, "Sending ACK_PONY to %d processes", acks_to_send);
         for (int i = 0; i < acks_to_send; i++) {
-            packet.send(*tourist, tourist->queue_pony.unsafe_pop());
+            packet.send(*tourist, tourist->queue_pony.back());
+            tourist->queue_pony.pop_back();
         }
     }
-    tourist->queue_pony.mutex_unlock();
     Debug::dprint(*tourist, "Going to sleep");
     tourist->state.safe_set(Tourist::RESTING);
 }

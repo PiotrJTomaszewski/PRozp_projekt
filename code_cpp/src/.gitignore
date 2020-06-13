@@ -1,3 +1,4 @@
 *.o
 nanozombie.out
 logs
+build

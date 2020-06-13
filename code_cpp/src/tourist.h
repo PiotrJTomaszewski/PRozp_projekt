@@ -19,40 +19,34 @@ public:
         RESTING, WAIT_PONY, CHOOSE_SUBMAR,
         WAIT_SUBMAR, BOARDED, TRAVEL, ON_SHORE
     };
-    SharedVar<state_t> state; // See if can change to atomic
+    SharedVar<state_t> state;
     std::atomic<int> lamport_clock;
-    std::atomic<int> my_req_pony_timestamp;
     std::atomic<int> my_submarine_id;
     std::atomic<bool> is_my_submarine_full;
     SharedVector<bool> available_submarine_list;
-    SharedVector<int> queue_pony;
+    SharedVector<int> boarded_on_my_submarine;
     std::unique_ptr<QueuesSubmarine> submarine_queues;
     ConditionVar cond_var;
+
+    std::atomic<int> my_req_pony_timestamp;
+    std::atomic<int> is_ack_travel_queued; // if queued then submarine_id, -1 if not
+    std::vector<int> queue_pony;
+    void add_to_queue_pony(int tourist_id);
+    std::atomic<int> received_ack_no;
+
     int get_id();
-    int increment_try_no();
-    int get_try_no();
-    void set_try_no(int value);
-    int increment_received_ack_no();
-    void clear_received_ack_no();
 
     int get_best_submarine_id(SystemInfo &sys_info);
     bool can_board_my_submarine(SystemInfo &sys_info);
     bool is_capitan();
     void fill_boarded_on_my_submarine(SystemInfo &sys_info);
-    int get_boarded_on_my_submarine_size();
     void fill_suplement_boarded_on_my_submarine(std::list<int> &list, int tourist_no);
     std::atomic<int> my_submarine_captain_id;
 
-    void queue_ack_travel(); // TODO: Protect from race condition?
-    bool get_and_clear_is_ack_travel_queued();
-
     bool is_submarine_deadlock(SystemInfo &sys_info);
+
 
 private:
     int id;
-    std::vector<int> boarded_on_my_submarine;
-    int try_no; // Only main loop'll have access to this
-    int received_ack_no; // Only communication loop'll have access to this
-    bool is_ack_travel_queued;
-    int  ack_travel_queued_submarine_id;
+    int ack_travel_queued_submarine_id;
 };

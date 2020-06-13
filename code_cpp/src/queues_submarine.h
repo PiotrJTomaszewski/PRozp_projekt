@@ -33,6 +33,4 @@ private:
 
     std::unique_ptr<std::vector<Element>[]> queues;
     std::mutex mutex;
-    // bool is_lower_priority_than_new_tourist(Element to_test);
-    // Element new_tourist_element;
 };

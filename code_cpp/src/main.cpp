@@ -4,12 +4,8 @@
 #include <stdlib.h>
 #include <thread>
 
-#define DEBUG 1
-
-#if DEBUG == 1
 #include <sys/types.h>
 #include <unistd.h>
-#endif
 
 #include "main_loop.h"
 #include "communication_loop.h"
@@ -52,10 +48,10 @@ int main(int argc, char **argv) {
     int tourist_id;
     MPI_Comm_rank(MPI_COMM_WORLD, &tourist_id);
 
-    #if DEBUG == 1
+    #ifdef DEBUG_SHOW_PID
         std::cout << "ID: " << tourist_id << " PID: " << getpid() << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(5));
-    #endif
+    #endif //DEBUG_SHOW_PID
 
     std::shared_ptr<SystemInfo> sys_info(new SystemInfo(tourist_no));
     std::shared_ptr<Tourist> tourist(new Tourist(tourist_id, sys_info->get_submarine_no()));
@@ -67,5 +63,4 @@ int main(int argc, char **argv) {
 
     comm_thread.join();
     MPI_Finalize();
-
 }

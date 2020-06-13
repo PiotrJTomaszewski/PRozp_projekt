@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        "*.html": "html",
         "*.tcc": "cpp",
         "istream": "cpp",
         "cstdio": "cpp",
@@ -53,6 +54,12 @@
         "thread": "cpp",
         "cinttypes": "cpp",
         "typeinfo": "cpp",
-        "list": "cpp"
-    }
+        "list": "cpp",
+        "compare": "cpp",
+        "concepts": "cpp",
+        "ranges": "cpp",
+        "stop_token": "cpp"
+    },
+    "C_Cpp.default.cppStandard": "c++17",
+
 }

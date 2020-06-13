@@ -1,2 +1,2 @@
-#!/bin/bash
-make -j4 nanozombie.out
+#!/bin/sh
+cd build && CXX=/bin/mpic++ cmake .. && make clean && make -j4

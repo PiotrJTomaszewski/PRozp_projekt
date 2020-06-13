@@ -26,7 +26,7 @@ int ConditionVar::wait_for(int awaited_signals) {
         pthread_cond_wait(&cond, &mutex);
     }
     encountered_signal = signal;
-    signal = 0x00;
+    signal = static_cast<int>(NO_SIGNAL);
     pthread_mutex_unlock(&mutex);
     return encountered_signal;
 }

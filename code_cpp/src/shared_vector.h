@@ -14,6 +14,7 @@ public:
     void mutex_lock();
     void mutex_unlock();
     T safe_get_element(int position);
+    int safe_get_size();
     void safe_set_element(T value, int position);
     void safe_push_back(T value);
 
@@ -22,7 +23,7 @@ public:
     int unsafe_get_size();
     void unsafe_push_back(T value);
     T unsafe_pop();
-    // T& operator [](int position);
+    void unsafe_clear();
 
 private:
     std::vector<T> data;
@@ -63,11 +64,16 @@ void SharedVector<T>::mutex_unlock() {
     mutex.unlock();
 }
 
-//TODO: This class needs testing
 template <class T>
 T SharedVector<T>::safe_get_element(int position) {
     std::lock_guard<std::mutex> guard(mutex);
     return data[position];
+}
+
+template <class T>
+int SharedVector<T>::safe_get_size() {
+    std::lock_guard<std::mutex> guard(mutex);
+    return data.size();
 }
 
 template <class T>
@@ -102,7 +108,6 @@ void SharedVector<T>::unsafe_push_back(T value) {
     data.push_back(value);
 }
 
-
 template <class T>
 T SharedVector<T>::unsafe_pop() {
     T last_val = data.back();
@@ -110,9 +115,7 @@ T SharedVector<T>::unsafe_pop() {
     return last_val;
 }
 
-
-// template <class T>
-// T& SharedVector<T>::operator [](int position) {
-//     std::lock_guard<std::unique_lock> lock(mutex);
-//     return &data[position];
-// }
+template <class T>
+void SharedVector<T>::unsafe_clear() {
+    data.clear();
+}
