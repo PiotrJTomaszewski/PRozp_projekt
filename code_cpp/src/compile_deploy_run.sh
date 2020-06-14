@@ -1,7 +1,7 @@
 #!/bin/sh
 DIR="$PWD/build"
 echo "Compiling on localhost"
-./compile.sh
+./compile_local.sh
 echo "Deploying"
 for MACHINE in "192.168.100.231" "192.168.100.235"
 do
