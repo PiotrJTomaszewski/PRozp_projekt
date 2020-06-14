@@ -24,8 +24,8 @@ void printSubmarineQueues(Tourist &tourist) {
 #endif //DEBUG_SHOW_SUBMAR_QUEUE
 
 #ifdef DEBUG_USE_COLOR
-const int colors_count = 14;
-const char* colors[] = {"0;31", "0;32", "0;33", "0;34", "0;35", "0;36", "0;37", "1;30", "1;31", "1;32", "1;33", "1;34", "1;35", "1;36"};
+const int colors_count = 13;
+const char* colors[] = {"0;31", "0;32", "0;33", "0;35", "0;36", "0;37", "1;30", "1;31", "1;32", "1;33", "1;34", "1;35", "1;36"};
 #endif //DEBUG_USE_COLOR
 
 void Debug::dprint( Tourist &tourist, std::string text) {

@@ -13,6 +13,7 @@ Tourist::Tourist(int id, int submarine_no) {
     for (int i=0; i<submarine_no; i++) {
         available_submarine_list.unsafe_push_back(true);
     }
+    my_submarine_id = -1;
 }
 
 Tourist::~Tourist() {
@@ -67,7 +68,7 @@ int Tourist::get_best_submarine_id(SystemInfo &sys_info) {
 }
 
 bool Tourist::can_board_my_submarine(SystemInfo &sys_info) {
-    int space_left = sys_info.get_submarine_capacity(my_submarine_id);
+    int space_left = sys_info.get_submarine_capacity(my_submarine_id.load());
     int passenger_id;
     submarine_queues->mutex_lock();
     for (int position=0; position<submarine_queues->unsafe_get_size(my_submarine_id); position++) {

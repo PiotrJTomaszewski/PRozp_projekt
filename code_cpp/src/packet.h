@@ -44,11 +44,11 @@ public:
 
 private:
     struct packet_t {
+        msg_t msg_type;
         int lamport_clock;
         int submar_id;
         int passenger_no;
     };
-    msg_t msg_type;
-    packet_t data_packet = {0, 0, 0};
+    packet_t data_packet = {KILL_MESSAGE, 0, 0, 0};
     MPI_Status status = {0, 0, 0, 0, 0};
 };

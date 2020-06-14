@@ -17,6 +17,7 @@ public:
     int safe_get_size();
     void safe_set_element(T value, int position);
     void safe_push_back(T value);
+    bool safe_remove_val_if_exists(T value);
 
     T unsafe_get_element(int position);
     void unsafe_set_element(T value, int position);
@@ -31,9 +32,7 @@ private:
 };
 
 template <class T>
-SharedVector<T>::SharedVector() {
-
-}
+SharedVector<T>::SharedVector() {}
 
 template <class T>
 SharedVector<T>::SharedVector(const std::vector<T> &init_data) {
@@ -118,4 +117,21 @@ T SharedVector<T>::unsafe_pop() {
 template <class T>
 void SharedVector<T>::unsafe_clear() {
     data.clear();
+}
+
+template <class T>
+bool SharedVector<T>::safe_remove_val_if_exists(T value) {
+    std::lock_guard<std::mutex> guard(mutex);
+    int position = -1;
+    for (int i = 0; i < static_cast<int>(data.size()); i++) {
+        if (value == data[i]) {
+            position = i;
+            break;
+        }
+    }
+    if (position != -1) {
+        data.erase(data.begin() + position);
+        return true;
+    }
+    return false;
 }

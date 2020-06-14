@@ -128,8 +128,10 @@ void CommunicationLoop::handler_full_submar_stay() {
     Debug::dprintf(*tourist, "Received FULL_SUBMAR_STAY from %d, marking submarine %d as unavailable", packet.get_sender_id(), submarine_id);
     #endif //DEBUG_PRINT_ONLY_IMPORTANT_STUFF
     tourist->available_submarine_list.safe_set_element(submarine_id, false);
-    if (tourist->state.safe_get() == Tourist::BOARDED && tourist->is_capitan()) {
-        tourist->cond_var.notify(ConditionVar::SUBMARINE_FULL_SIGNAL);
+    if (submarine_id == tourist->my_submarine_id.load()) {
+        if (tourist->state.safe_get() == Tourist::BOARDED && tourist->is_capitan()) {
+            tourist->cond_var.notify(ConditionVar::SUBMARINE_FULL_SIGNAL);
+        }
     }
 }
 
@@ -141,8 +143,16 @@ void CommunicationLoop::handler_full_submar_retreat() {
     #endif //DEBUG_PRINT_ONLY_IMPORTANT_STUFF
     tourist->available_submarine_list.safe_set_element(submarine_id, false);
     tourist->submarine_queues->safe_remove_tourist_id(submarine_id, sender_id);
-    if (tourist->state.safe_get() == Tourist::BOARDED && tourist->is_capitan()) {
-        tourist->cond_var.notify(ConditionVar::SUBMARINE_FULL_SIGNAL);
+    if (submarine_id == tourist->my_submarine_id.load()) {
+        if (tourist->state.safe_get() == Tourist::BOARDED && tourist->is_capitan()) {
+            bool res = tourist->boarded_on_my_submarine.safe_remove_val_if_exists(sender_id);
+            if (res) {
+                if (tourist->received_ack_no.load() == tourist->boarded_on_my_submarine.safe_get_size()) {
+                    tourist->cond_var.notify(ConditionVar::ALL_ACK_SIGNAL);
+                }
+            }
+            tourist->cond_var.notify(ConditionVar::SUBMARINE_FULL_SIGNAL);
+        }
     }
 }
 
@@ -165,7 +175,7 @@ void CommunicationLoop::handler_return_submar() {
         case Tourist::TRAVEL:
             captain_id = packet.get_sender_id();
             #ifndef DEBUG_PRINT_ONLY_IMPORTANT_STUFF
-            Debug::dprintf(*tourist, "End ouf journey. Responing ACK_TRAVEL to the captain (%d)", captain_id);
+            Debug::dprintf(*tourist, "End of journey. Responing ACK_TRAVEL to the captain (%d)", captain_id);
             #endif //DEBUG_PRINT_ONLY_IMPORTANT_STUFF
             Packet(Packet::ACK_TRAVEL).send(*tourist, captain_id);
             tourist->cond_var.notify(ConditionVar::JOURNEY_END_SIGNAL);

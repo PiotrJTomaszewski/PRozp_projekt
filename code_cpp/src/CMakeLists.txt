@@ -7,10 +7,10 @@ include_directories(${PROJECT_SOURCE_DIR})
 
 # Debug modes
 # Lab machines have older version of CMAKE, add_compile_definitions doesn't work there, use add_definitions instead
-# add_compile_definitions(DEBUG_USE_COLOR)
-# add_compile_definitions(DEBUG_SHOW_SUBMAR_QUEUE)
-# add_compile_definitions(DEBUG_PRINT_ONLY_IMPORTANT_STUFF)
-# add_compile_definitions(DEBUG_SHOW_PID)
+add_compile_definitions(DEBUG_USE_COLOR)
+add_compile_definitions(DEBUG_SHOW_SUBMAR_QUEUE)
+add_compile_definitions(DEBUG_PRINT_ONLY_IMPORTANT_STUFF)
+add_compile_definitions(DEBUG_SHOW_PID)
 
 # add_definitions(-DDEBUG_USE_COLOR -DDEBUG_SHOW_SUBMAR_QUEUE)
 

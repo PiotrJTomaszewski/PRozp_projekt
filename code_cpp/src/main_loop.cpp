@@ -57,7 +57,7 @@ void MainLoop::handler_wait_pony() {
 void MainLoop::handler_choose_submar() {
     int submarine_id = tourist->get_best_submarine_id(*sys_info);
     Debug::dprintf(*tourist, "I've chosen a submarine with id %d, asking for permission", submarine_id);
-    tourist->my_submarine_id = submarine_id;
+    tourist->my_submarine_id.store(submarine_id);
     tourist->state.mutex_lock();
     tourist->received_ack_no = 1;
     int req_timestamp = Packet(Packet::REQ_SUBMAR, submarine_id).broadcast(*tourist, sys_info->get_tourist_no());
@@ -78,7 +78,7 @@ void MainLoop::handler_wait_submar() {
         Debug::dprintf(*tourist, "Can board %d, changing state to BOARDED", tourist->my_submarine_id.load());
         tourist->state.safe_set(Tourist::BOARDED);
     } else {
-        if (++try_no < sys_info->get_max_try_no()) {
+        if (++try_no < sys_info->get_max_try_no() && (tourist->is_ack_travel_queued.load() == -1)) {
             tourist->available_submarine_list.safe_set_element(false, tourist->my_submarine_id.load());
             tourist->submarine_queues->safe_remove_tourist_id(tourist->my_submarine_id.load(), tourist->get_id());
             Debug::dprintf(*tourist, "Can't board %d, trying another one, so broadcasting FULL_SUBMARINE_RETREAT and changing state to CHOOSE_SUBMAR", tourist->my_submarine_id.load());
@@ -117,7 +117,8 @@ void MainLoop::handler_boarded() {
             Debug::dprint(*tourist, "Submarine deadlock detected!");
         }
         tourist->fill_boarded_on_my_submarine(*sys_info);
-        if (tourist->boarded_on_my_submarine.unsafe_get_size() == 1) { // This vector's size can only be changed in one place - the line above
+        int boarded_on_my_submar_no = tourist->boarded_on_my_submarine.unsafe_get_size(); // This vector's size can only be changed in one place - the line above
+        if (boarded_on_my_submar_no == 1) { 
             Debug::dprintf(*tourist, "Submarine %d is ready to depart and I'm alone, changing state to TRAVEL", my_submarine_id);
             tourist->state.safe_set(Tourist::TRAVEL);
         } else {
@@ -130,10 +131,10 @@ void MainLoop::handler_boarded() {
             Packet::msg_t msg_type;
             if (deadlock_detected) {
                 msg_type = Packet::DEPART_SUBMAR_NOT_FULL;
-                Debug::dprintf(*tourist, "Informing passengers on %d that submarines are leaving not full", my_submarine_id);
+                Debug::dprintf(*tourist, "Informing %d other passengers on %d that submarines are leaving not full", boarded_on_my_submar_no, my_submarine_id);
             } else {
                 msg_type = Packet::DEPART_SUBMAR;
-                Debug::dprintf(*tourist, "Informing passengers on %d that the submarine is leaving", my_submarine_id);
+                Debug::dprintf(*tourist, "Informing %d other passengers on %d that the submarine is leaving", boarded_on_my_submar_no, my_submarine_id);
             }
             tourist->received_ack_no = 1;
             Packet(msg_type).send_to_travelling_with_me(*tourist);
@@ -153,6 +154,7 @@ void MainLoop::handler_boarded() {
             Debug::dprint(*tourist, "Changing state to TRAVEL");
             tourist->state.safe_set(Tourist::TRAVEL);
         } else {
+            // This can happen if deadlock was detected
             Debug::dprintf(*tourist, "My submarine (%d) has returned and I wasn't travelling", my_submarine_id);
         }
     }
@@ -167,7 +169,7 @@ void MainLoop::handler_travel() {
         std::this_thread::sleep_for(std::chrono::seconds(travel_time));
         int on_my_submarine_size = tourist->boarded_on_my_submarine.safe_get_size();
         if (on_my_submarine_size > 1) {
-            Debug::dprintf(*tourist, "Journey on %d has ended, informing passengers", my_submarine_id);
+            Debug::dprintf(*tourist, "Journey on %d has ended, informing %d other passengers", my_submarine_id, on_my_submarine_size-1);
             tourist->received_ack_no = 1;
             Packet(Packet::RETURN_SUBMAR, my_submarine_id, on_my_submarine_size).send_to_travelling_with_me(*tourist);
             Debug::dprint(*tourist, "Waiting for all of the ACK_TRAVEL responses");
