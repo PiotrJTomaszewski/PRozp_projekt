@@ -9,4 +9,4 @@ do
     scp "$DIR/nanozombie.out" "$MACHINE":/"$DIR/nanozombie.out"
 done
 echo "Running"
-mpirun --np 10 --oversubscribe --hostfile home_hosts "$DIR/nanozombie.out"
+mpirun --np "$1" --oversubscribe --hostfile piotr_hosts "$DIR/nanozombie.out"
