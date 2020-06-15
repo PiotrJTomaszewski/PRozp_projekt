@@ -40,6 +40,7 @@ int Tourist::get_best_submarine_id(SystemInfo &sys_info) {
     for (int submarine_id=sys_info.get_submarine_no()-1; submarine_id>=0; submarine_id--) {
         if (!available_submarine_list.unsafe_get_element(submarine_id)) {
             unavailable_submarine_id = submarine_id;
+            continue;
         }
         submarine_capacity = sys_info.get_submarine_capacity(submarine_id);
 

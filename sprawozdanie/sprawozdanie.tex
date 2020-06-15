@@ -1,0 +1,355 @@
+\documentclass[a4paper]{article}
+\usepackage{textcomp}
+\usepackage{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{gensymb}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{lineno}
+
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=4
+}
+
+\lstset{style=mystyle}
+\def\linenumberfont{\normalfont\small\sffamily}
+
+
+%opening
+\title{Nanozombie - Sprawozdanie}
+\author{Marcin Pastwa 136779\\
+Piotr Tomaszewski 136821 }
+\date{}
+
+
+\begin{document}
+\maketitle
+\section{Opis problemu i słowny opis rozwiązania}
+\linenumbers
+Zadanie polegało na zrealizowaniu dostępu do sekcji krytycznej w systemie rozproszonym.\\
+W naszym rozwiązaniu wyróżniliśmy dwie sekcje krytyczne. Pierwsza - pobranie stroju kucyka, druga - zajęcie miejsca na łodzi.
+
+Współbieżny dostęp do strojów kucyka zrealizowany został bazując na algorytmie Ricarta - Agravali. Różnica, w stosunku do podstawowej wersji algorytmu
+polega na zwiększeniu rozmiaru sekcji krytycznej do liczby procesów równej liczbie strojów kucyka.
+Proces może zabrać strój po otrzymaniu co najmniej takiej liczby zgód, że nawet gdyby wszystkie procesy, od których jeszcze
+nie dostał zgody znajdowały się w sekcji krytycznej (miały strój), to i tak zostałby co najmniej jeden strój wolny.
+
+Po pobraniu stroju kucyka, proces wybiera łódź podwodną. Wyboru dokonuje stosując następującą heurystykę: Spośród łodzi, które jednocześnie uznawane są za dostępne oraz w powiązanej z nimi kolejce znajduje się jakiś proces,
+wybierana jest taka, która cechuje się najmniejszym ilorazem zajętej pojemności do całkowitej pojemności. Jeśli taka łódź nie istnieje, wybierana jest pusta łódź o najniższym id. Jeśli pustych łodzi również nie ma, wybierana jest dowolna łódź.
+
+Po wybraniu łodzi proces zaczyna ubiegać się o dostęp do niej. Przyjęty algorytm bazuje na algorytmie Lamporta. Ponownie, została jednak rozszerzona sekcja krytyczna - proces może wejść do sekcji krytycznej, jeśli suma rozmiarów jego i procesów
+znajdujących się przed nim w kolejce nie przekracza maksymalnej pojemności łodzi.
+
+Proces, który znajdzie się w sekcji krytycznej sprawdza czy może mianować się kapitanem łodzi. Kapitanem jest proces, który wygrałby dostęp do sekcji krytycznej w podstawowej wersji alg. Lamporta - czyli jest pierwszy w kolejce.
+
+Sygnał do odpłynięcia łodzi wydaje kapitan. Dokonuje tego, gdy ustali, że nikt więcej nie wsiądzie na łódź, tj. gdy otrzyma wiadomość od jakiegoś procesu, że ten nie może zmieścić się na daną łódź albo wykryje, że nikt więcej nie będzie mógł wsiąść, gdyż łącznie na łodziach przebywa maksymalna dopuszczalna liczba turystów (tj. min\{\textit{liczba strojów kucyka}, \textit{liczba turystów}\}).
+Kapitan wylicza ile procesów z kolejki zmieści się na łodzi, po czym wysyła do nich zapytanie mające na celu celu upewnienie się, że wszystkie z nich są już gotowe do podróży. Po otrzymaniu wszystkich potwierdzeń wysyła do nich informację o rozpoczęciu podróży.
+Po ponownym zebraniu potwierdzeń rozpoczyna podróż.
+
+Po zakończeniu podróży informuje pasażerów na swojej łodzi o tym fakcie, dając im czas na opuszczenie łodzi. Wiadomość ta jest odpowiednikiem informacji o zwolnieniu sekcji krytycznej w algorytmie Lamporta,
+jest ona jednak zgrupowana - kapitan informuje o zwolnieniu sekcji krytycznej przez wszystkich pasażerów. Procesy odsyłają kapitanowi potwierdzenie opuszczenia i wracają na brzeg.
+Po zebraniu potwierdzeń, kapitan wysyła tę wiadomość ponownie, tym razem do procesów, które nie przebywały z nim na pokładzie, nie oczekuje już jednak potwierdzenia, tylko od razu wraca na brzeg.
+
+Na brzegu następuje zwolnienie sekcji krytycznej związanej ze strojem kucyka. Zgodnie z zastosowanym alg. Ricarta - Agravali, następuje wysłanie zgody na pobranie stroju do wszystkich
+procesów, które wysłały prośbę w czasie, gdy omawiany proces znajdował się w sekcji krytycznej.
+
+\resetlinenumber[1]\linenumbers
+\section{Założenia}
+
+Przyjmujemy, że środowisko jest w pełni asynchroniczne, 
+kanały komunikacyjne są FIFO i niezawodne. Procesy nie ulegają awarii.\\
+Ponaddto, przyjmujemy, że każdy turysta może zmieścić się w każdej pustej łodzi podwodnej, to jest
+$max\left\{S_{tourist}\right\} \leq min\left\{C_{submarine}\right\}$,
+gdzie $S_{toursit}$ to zbiór rozmiarów turystów,
+$C_{submarine}$ to zbiór pojemności łodzi podwodnych.\\
+Gdyby zrezygnować z tego założenia, w szczególnym wypadku mógłby istnieć turysta,
+który nie zmieści się na żadnej łodzi. Proces taki nie mógłby brać udziału w przetwarzaniu,
+pozostawałby więc w uśpieniu, nigdy nie ubiegając się o dostęp do sekcji krytycznej.
+
+\resetlinenumber[1]\linenumbers
+\subsection{Struktury i zmienne}
+\begin{description}
+    \item [\textit{received\_ack\_no}] Liczba otrzymanych wiadomości typu ACK. Jest ustawiana na 1 przed rozesłaniem wiadomości wymagającej zebrania potwierdzeń.
+    \item [\textit{my\_req\_pony\_timestamp}] Zmienna przechowująca wartość zegara Lamporta w momencie wysłania wiadomości REQ\_PONY.
+    \item [\textit{queue\_pony}] Kolejka, na której umieszczane są id nadawców, od których proces otrzymał REQ\_PONY, gdy był w sekcji krytycznej. Uwaga, kolejka ta nie zawiera duplikatów - jeśli dane id już widnieje w kolejce, nie zostanie do niej ponownie dodane.
+    \item [\textit{available\_submarine\_list}] Lista łodzi podwodnych, w której proces przechowuje informację, czy jego zdaniem łodzie mają jeszcze wolne miejsca, czy też nie. Jej głównym zastosowaniem jest uniknięcie sytuacji, w której proces po wycofaniu się z kolejki powiązanej z łodzią i w trakcie wyboru kolejnej łodzi ponownie wybrałby tę samą. Początkowo, wszystkie łodzie są oznaczone jako dostępne.
+    \item [\textit{queue\_submar\{id\}}] Lista kolejek (po jednej dla każdej łodzi podwodnej). Proces przechowuje na niej pary (znacznik czasowy, id procesu) dla każdego z procesów, które wysłały do niego REQ\_SUBMAR z parametrem stanowiącym id łodzi. Uwaga, procesy w ramach każdej kolejki są posortowane malejąco według priorytetu. Im niższy znacznik czasowy, tym wyższy priorytet. W przypadku równych znaczników, wyższy priorytet ma proces o niższym id. Początkowo, wszystkie kolejki są puste.
+    \item [\textit{try\_no}] Liczba niepowodzeń przy zajmowaniu miejsca w łodzi podwodnej. Początkowo równa 0.
+    \item [\textit{my\_submarine\_id}] Id łodzi podwodnej wybranej przez proces. Początkowo może mieć dowolną wartość - pierwszy odczyt wartości tej zmiennej zawsze występuje po pierwszym zapisie.
+    \item [\textit{boarded\_on\_my\_submarine}] Lista tworzona przez kapitana, w której przechowuje id procesów, które znajdują się na pokładzie jego łodzi podwodnej. Początkowo pusta.
+    \item [\textit{lamport\_clock}] Zmienna, w której proces przechowuje aktualną wartość zegara Lamporta. Początkowo, wartość ta równa jest 0. Jest zwiększana o 1 przy wysyłaniu wiadomości (niezależnie od tego, do ilu procesów wiadomość ma dotrzeć), nowa wartość dołączana jest do wiadomości. Po otrzymaniu wiadomości jest ustawiana na max\{\textit{lamport\_clock}, znacznik z otrzymanej wiadomości\}+1.
+    \item [\textit{Packet}] Struktura reprezentująca wiadomość. Zawiera następujące pola: typ wiadomości, wartość zegara Lamporta, id łodzi podwodnej, liczba pasażerów. Pierwsze dwa parametry są zawsze wymagane, kolejne dwa, w zależności od typu wiadomości, są wymagane albo mogą mieć dowolną wartość.
+\end{description}
+
+\resetlinenumber[1]\linenumbers
+\subsection{Stałe}
+\begin{description}
+    \item [\textit{Tourist\_no}] Całkowita liczba turystów w systemie.
+    \item [\textit{Pony\_no}] Całkowita liczba strojów kucyka.
+    \item [\textit{Submar\_no}] Całkowita liczba łodzi podwodnych.
+    \item [\textit{Dict\_tourist\_sizes}] Słownik, w którym kluczem jest id turysty, wartością jest jego rozmiar.
+    \item [\textit{Dict\_submar\_capacity}] Słownik, w którym kluczem jest id łodzi podwodnej, wartością jest jej całkowita pojemność.
+    \item [\textit{Max\_try\_no}] Próg decydujący o tym, ile prób wejścia na łódź może podjąć proces, nim postanowi zostać w kolejce do łodzi, w której aktualnie nie może się zmieścić. Ma na celu zapewnienie warunku postępu. Może mieć wartość równą 0, wtedy proces nigdy nie będzie się wycofywał z kolejki.
+\end{description}
+
+
+\resetlinenumber[1]\linenumbers
+\subsection{Wiadomości}
+\begin{description}
+    \item [REQ\_PONY] Żądanie dostępu do pierwszej sekcji krytycznej (żądanie dostępu do stroju kucyka).
+    \item [ACK\_PONY] Zgoda na pobranie stroju kucyka.
+    \item [REQ\_SUBMAR\{\textit{submarine\_id}\}] Żądanie dostępu do drugiej sekcji krytycznej (żądanie dostępu do wskazanej łodzi podwodnej).
+    \item [ACK\_SUBMAR] Potwierdzenie wpisania nadawcy do odpowiedniej kolejki \textit{queue\_submar}.
+    \item [FULL\_SUBMAR\_RETREAT\{\textit{submarine\_id}\}] Wysyłana przez proces, który nie zmieścił się na łodzi podwodnej, nie przekroczył jeszcze progu \textit{Max\_try\_no}, więc się wycofuje.
+    \item [FULL\_SUBMAR\_STAY\{\textit{submarine\_id}\}] Wysyłana przez proces, który nie zmieścił się na łodzi podwodnej, przekroczył jednak próg \textit{Max\_try\_no}, informuje więc, że pozostaje w kolejce do łodzi.
+    \item [RETURN\_SUBMAR\{\textit{submarine\_id, passenger\_no}\}] Wysyłana przez kapitana w celu poinformowania o powrocie łodzi, którą ten kapitan płynął.
+    \item [TRAVEL\_READY] Wysyłana przez kapitana w celu weryfikacji, czy wszystkie procesy, które mogą wsiąść na łódź podwodną przeszły już do stanu \textbf{BOARDED}.
+    \item [ACK\_TRAVEL] Potwierdzenie odsyłane kapitanowi zgodnie z zasadami podanymi w sekcji szczegółowego opisu.
+    \item [DEPART\_SUBMAR] Wysyłana przez kapitana w celu poinformowania, że łódź, na której zarówno kapitan, jak i odbiorca przebywają właśnie odpływa z portu.
+    \item [DEPART\_SUBMAR\_NOT\_FULL] Wysyłana przez kapitana w celu poinformowania, że łódź, na której zarówno kapitan, jak i odbiorca przebywają właśnie odpływa z portu oraz, że wykryte zostało zakleszczenie.
+\end{description}
+
+\resetlinenumber[1]\linenumbers
+\subsection{Stany}
+Początkowym stanem procesu jest \textbf{RESTING}.
+\begin{description}
+    \item [\textbf{RESTING}] Nie ubiega się o dostęp do żadnej sekcji krytycznej. (Turysta odpoczywa).
+    \item [\textbf{WAIT\_PONY}] Ubiega się o dostęp do pierwszej sekcji krytycznej - o pobranie stroju kucyka.
+    \item [\textbf{CHOOSE\_SUBMAR}] Pobrał strój kucyka, wybiera sobie łódź podwodną.
+    \item [\textbf{WAIT\_SUBMAR}] Ubiega się o dostęp do drugiej sekcji krytycznej - miejsce na łodzi podwodnej.
+    \item [\textbf{BOARDED}] Oczekuje na rozpoczęcie podróży.
+    \item [\textbf{TRAVEL}] Podróżuje łodzią podwodną.
+    \item [\textbf{ON\_SHORE}] Zakończył podróż, opuszcza obie sekcje krytyczne.
+\end{description}
+
+\resetlinenumber[1]\linenumbers
+\subsection{Opis szczegółowy}
+\subsubsection{\textbf{RESTING}}
+Stan początkowy. \\
+Proces przebywa w stanie \textbf{RESTING} do czasu, aż podejmie decyzję o rozpoczęciu wyprawy.
+Gdy postanowi wyruszyć, zaczyna ubiegać się o dostęp do pierwszej sekcji krytycznej. \\
+Ze stanu \textbf{RESTING} następuje przejście do \textbf{WAIT\_PONY} po uprzednim
+ustawieniu zmiennej \textit{received\_ack\_no} na 1 (przyjmujemy, że proces ma już swoje pozwolenie)
+oraz wysłaniu REQ\_PONY do wszystkich pozostałych procesów.
+Wartość zegara Lamporta wysłanej wiadomości jest zapisywana do zmiennej \textit{my\_req\_pony\_timestamp}.
+\\
+\\
+\textbf{Reakcja na wiadomości}
+\begin{description}
+    \item [REQ\_PONY] Odpowiada ACK\_PONY.
+    \item [ACK\_PONY] Ignoruje. Otrzymanie tej wiadomości jest możliwe tylko, jeśli proces był już chociaż raz w sekcji krytycznej.
+    \item [REQ\_SUBMAR\{\textit{submarine\_id}\}] Dodaje nadawcę do kolejki \textit{queue\_submar\{id\}} powiązanej ze wskazaną przez parametr \textit{submarine\_id} łodzią podwodną i odpowiada ACK\_SUBMAR.
+    \item [ACK\_SUBMAR] Niemożliwe, ignoruje.
+    \item [FULL\_SUBMAR\_STAY\{\textit{submarine\_id}\}] Oznacza na liście \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest niedostępna.
+    \item [FULL\_SUBMAR\_RETREAT\{\textit{submarine\_id}\}] Oznacza na liście\\
+     \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest niedostępna \\oraz usuwa nadawcę z kolejki \textit{queue\_submar\{id\}} powiązanej z łodzią wskazywaną przez parametr \textit{submarine\_id}.
+    \item [RETURN\_SUBMAR\{\textit{submarine\_id, passenger\_no}\}] Oznacza na liście\\ \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest dostępna
+    oraz usuwa z początku kolejki \textit{queue\_submar\{id\}} powiązanej z łodzią wskazywaną przez parametr \textit{submarine\_id} \textit{passenger\_no} pozycji.
+    \item [TRAVEL\_READY] Niemożliwe, ignoruje.
+    \item [ACK\_TRAVEL] Niemożliwe, ignoruje.
+    \item [DEPART\_SUBMAR] Niemożliwe, ignoruje.
+    \item [DEPART\_SUBMAR\_NOT\_FULL] Niemożliwe, ignoruje.
+\end{description}
+
+\resetlinenumber[1]\linenumbers
+\subsubsection{\textbf{WAIT\_PONY}}
+Proces przechodzi ze stanu \textbf{WAIT\_PONY} do \textbf{CHOOSE\_SUBMAR} po otrzymaniu wystarczającej liczby odpowiedzi ACK\_PONY,
+tak aby mieć pewność, że może bezpiecznie zająć sekcję krytyczną (tj. zabrać strój kucyka). Pewność tę uzyskuje, gdy jego zmienna
+\textit{received\_ack\_no} ma wartość co najmniej $\textit{Tourist\_no} - \textit{Pony\_no} + 1$.
+W szczególnym przypadku wymagana liczba potwierdzeń może być mniejsza od 1. W takiej sytuacji, proces nie musi czekać na żadne potwierdzenie, może od razu przejść do następnego stanu.
+\\
+\\
+\textbf{Reakcja na wiadomości}
+\begin{description}
+    \item [REQ\_PONY] Porównuje znacznik czasowy otrzymanej wiadomości z \textit{my\_req\_pony\_timestamp}. Jeśli otrzymana wiadomość ma niższy priorytet (jej znacznik czasowy jest większy od \textit{my\_req\_pony\_timestamp}
+     albo, jeśli znaczniki są równe, id nadawcy jest większe od id omawianego procesu), dodaje nadawcę do kolejki \textit{queue\_pony} i nic nie odpowiada. W przeciwnym razie odpowiada ACK\_PONY.
+    \item [ACK\_PONY] Inkrementuje zmienną \textit{received\_ack\_no}.
+    \item [REQ\_SUBMAR\{\textit{submarine\_id}\}] Dodaje nadawcę do kolejki \textit{queue\_submar\{id\}} powiązanej ze wskazaną przez parametr \textit{submarine\_id} łodzią podwodną i odpowiada ACK\_SUBMAR.
+    \item [ACK\_SUBMAR] Niemożliwe, ignoruje.
+    \item [FULL\_SUBMAR\_STAY\{\textit{submarine\_id}\}] Oznacza na liście \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest niedostępna.
+    \item [FULL\_SUBMAR\_RETREAT\{\textit{submarine\_id}\}] Oznacza na liście\\
+     \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest niedostępna oraz usuwa nadawcę z kolejki \textit{queue\_submar\{id\}} powiązanej z łodzią wskazywaną przez parametr \textit{submarine\_id}.
+    \item [RETURN\_SUBMAR\{\textit{submarine\_id, passenger\_no}\}] Oznacza na liście \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest dostępna
+    oraz usuwa z początku kolejki \textit{queue\_submar\{id\}} powiązanej z łodzią wskazywaną przez parametr \textit{submarine\_id} \textit{passenger\_no} pozycji.
+    \item [TRAVEL\_READY] Niemożliwe, ignoruje.
+    \item [ACK\_TRAVEL] Niemożliwe, ignoruje.
+    \item [DEPART\_SUBMAR] Niemożliwe, ignoruje.
+    \item [DEPART\_SUBMAR\_NOT\_FULL] Niemożliwe, ignoruje.
+\end{description}
+
+\resetlinenumber[1]\linenumbers
+\subsubsection{\textbf{CHOOSE\_SUBMAR}}
+Aby przejść ze stanu \textbf{CHOOSE\_SUBMAR} do \textbf{WAIT\_SUBMAR} proces musi najpierw wybrać, o miejsce na której łodzi będzie się ubiegał. Wyboru dokonuje według następującego algorytmu:
+Proces wybiera spośród łodzi, w których kolejce \textit{queue\_submar\{id\}} jest przynajmniej jeden proces i jednocześnie, na liście \textit{available\_submarine\_list} są oznaczone jako 'available'.
+Jeśli istnieją łodzie spełniające te warunki, to wybrana zostaje taka, która jest w najmniejszym stopniu zajęta (iloraz zajętego miejsca do całkowitej pojemności - wartość ta jest szacowana na podstawie listy \textit{queue\_submar} i słownika \textit{Dict\_tourist\_sizes}). Jeśli taka łódź nie istnieje, wybierana jest
+pusta łódź o najniższym id. Jeśli takiej łodzi też nie ma, wybierana jest dowolna łódź. Id wybranej łodzi zostaje zapisane w zmiennej \textit{my\_submarine\_id}\\
+Po wyborze łodzi, proces ustawia zmienną \textit{received\_ack\_no} na 1, wysyła do wszystkich pozostałych procesów wiadomość REQ\_SUBMAR\{\textit{my\_submarine\_id}\}. Może teraz przejść do stanu \textbf{WAIT\_SUBMAR}.
+\\
+\\
+\textbf{Reakcja na wiadomości}
+\begin{description}
+    \item [REQ\_PONY] Proces jest w sekcji krytycznej, więc dodaje nadawcę do kolejki \textit{queue\_pony} i nic nie odpowiada.
+    \item [ACK\_PONY] Ignoruje.
+    \item [REQ\_SUBMAR\{\textit{submarine\_id}\}] Dodaje nadawcę do kolejki \textit{queue\_submar\{id\}} powiązanej ze wskazaną przez parametr \textit{submarine\_id} łodzią podwodną i odpowiada ACK\_SUBMAR.
+    \item [ACK\_SUBMAR] Niemożliwe, ignoruje.
+    \item [FULL\_SUBMAR\_STAY\{\textit{submarine\_id}\}] Oznacza na liście \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest niedostępna.
+    \item [FULL\_SUBMAR\_RETREAT\{\textit{submarine\_id}\}] Oznacza na liście\\
+     \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest niedostępna oraz usuwa nadawcę z kolejki \textit{queue\_submar\{id\}} powiązanej z łodzią wskazywaną przez parametr \textit{submarine\_id}.
+    \item [RETURN\_SUBMAR\{\textit{submarine\_id, passenger\_no}\}] Oznacza na liście \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest dostępna
+    oraz usuwa z początku kolejki \textit{queue\_submar\{id\}} powiązanej z łodzią wskazywaną przez parametr \textit{submarine\_id} \textit{passenger\_no} pozycji.
+    \item [TRAVEL\_READY] Niemożliwe, ignoruje.
+    \item [ACK\_TRAVEL] Niemożliwe, ignoruje.
+    \item [DEPART\_SUBMAR] Niemożliwe, ignoruje.
+    \item [DEPART\_SUBMAR\_NOT\_FULL] Niemożliwe, ignoruje.
+\end{description}
+
+
+\resetlinenumber[1]\linenumbers
+\subsubsection{\textbf{WAIT\_SUBMAR}}
+Z tego stanu proces może przejść do \textbf{BOARDED} albo wrócić do \textbf{CHOOSE\_SUBMAR}.
+Proces czeka na otrzymanie ACK\_SUBMAR od każdego innego procesu, następnie na podstawie listy \textit{queue\_submar\{my\_submarine\_id\}} sprawdza czy zmieści się na łodzi.
+Jeśli tak, to przechodzi do stanu \textbf{BOARDED}.\\
+W przeciwnym razie, inkrementuje licznik niepowodzeń \textit{try\_no}. Jeśli nowa wartość licznika nie przekracza limitu \textit{Max\_try\_no}, proces usuwa się z kolejki \textit{queue\_submar\{my\_submarine\_id\}}, 
+oznacza łódź jako niedostępną w \textit{available\_submarine\_list}, wysyła do wszystkich pozostałych procesów wiadomość FULL\_SUBMAR\_RETREAT\{\textit{my\_submarine\_id}\}, po czym wraca
+do stanu \textbf{CHOOSE\_SUBMAR}.\\
+Jeśli jednak próg licznika został przekroczony, proces wysyła do pozostałych
+\\FULL\_SUBMAR\_STAY\{\textit{my\_submarine\_id}\}, po czym zawiesza się, aż otrzyma
+\\RETURN\_SUBMAR\{\textit{my\_submarine\_id, ...}\}. Po przebudzeniu i stosownym obsłużeniu wiadomości ponownie sprawdza czy może się zmieścić. Jeśli tak, przechodzi do stanu \textbf{BOARDED}, jeśli nie, czeka ponownie.
+\\
+\\
+\textbf{Reakcja na wiadomości}
+\begin{description}
+    \item [REQ\_PONY] Proces jest w sekcji krytycznej, więc dodaje nadawcę do kolejki \textit{queue\_pony} i nic nie odpowiada.
+    \item [ACK\_PONY] Ignoruje.
+    \item [REQ\_SUBMAR\{\textit{submarine\_id}\}] Dodaje nadawcę do kolejki \textit{queue\_submar\{id\}} powiązanej ze wskazaną przez parametr \textit{submarine\_id} łodzią podwodną i odpowiada ACK\_SUBMAR.
+    \item [ACK\_SUBMAR] Inkrementuje licznik \textit{received\_ack\_no}.
+    \item [FULL\_SUBMAR\_STAY\{\textit{submarine\_id}\}] Oznacza na liście \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest niedostępna.
+    \item [FULL\_SUBMAR\_RETREAT\{\textit{submarine\_id}\}] Oznacza na liście\\
+     \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest niedostępna oraz usuwa nadawcę z kolejki \textit{queue\_submar\{id\}} powiązanej z łodzią wskazywaną przez parametr \textit{submarine\_id}.
+    \item [RETURN\_SUBMAR\{\textit{submarine\_id, passenger\_no}\}] Oznacza na liście \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest dostępna
+    oraz usuwa z początku kolejki \textit{queue\_submar\{id\}} powiązanej z łodzią wskazywaną przez parametr \textit{submarine\_id} \textit{passenger\_no} pozycji.
+    Jeśli proces oczekuje na powrót tej łodzi, budzi się i wykonuje kroki opisane powyżej.
+    \item [TRAVEL\_READY] Kolejkuje odpowiedź. Odpowiedzi udzieli po przejściu do \textbf{BOARDED}, o ile do tego czasu nie zmieni łodzi.
+    \item [ACK\_TRAVEL] Niemożliwe, ignoruje.
+    \item [DEPART\_SUBMAR] Niemożliwe, ignoruje.
+    \item [DEPART\_SUBMAR\_NOT\_FULL] Niemożliwe, ignoruje.
+\end{description}
+
+\resetlinenumber[1]\linenumbers
+\subsubsection{\textbf{BOARDED}}
+Na początku proces zeruje wartość \textit{try\_no}.
+Z tego stanu proces może przejść tylko do \textbf{TRAVEL}. Jednak, moment przjścia jest zależny od tego czy proces został kapitanem łodzi podwodnej,
+czy też nie. Kapitanem mianowany jest proces, który znajduje się na pierwszej pozycji w kolejce powiązanej z łodzią, na której przebywa.
+\\
+\textbf{Jest kapitanem}\\
+Oczekuje na wiadomość, że łódź jest pełna: FULL\_SUBMAR\_STAY albo
+\\ FULL\_SUBMAR\_RETREAT z parametrem równym \textit{my\_submarine\_id}.
+Może się jednak zdarzyć, że taka wiadomość nigdy nie nadejdzie - dojdzie do zakleszczenia. Kapitan stara się wykryć taką sytuację poprzez sprawdzanie,
+po każdej otrzymanej i obsłużonej wiadomości REQ\_SUBMAR, czy łączna liczba procesów w kolejkach \textit{queue\_submar} jest równa
+min\{\textit{Pony\_no}, \textit{Tourist\_no}\}.\\
+Niezależnie od przyczyny, po wykryciu konieczności wypłynięcia proces, na podstawie właściwiej \textit{queue\_submar} wyznacza listę procesów znajdujących się na łodzi i umieszcza ją w uprzednio
+wyczyszczonej zmiennej \textit{boarded\_on\_my\_submarine}. Proces ustawia \textit{received\_ack\_no} na 1. Do każdego procesu z tej listy (oprócz siebie) wysyła zapytanie TRAVEL\_READY i oczekuje na otrzymanie od każdego z nich ACK\_TRAVEL.
+Mając już pewność, że pozostałe procesy są gotowe do wypłynięcia, ustawia \textit{received\_ack\_no} na 1, po czym wysyła do tych samych procesów: jeśli nie wykrył zakleszczenia wiadomość DEPART\_SUBMAR,
+w przeciwnym razie DEPART\_SUBMAR\_NOT\_FULL. Ponownie czeka na potwierdzenie ACK\_TRAVEL, po czym przechodzi do stanu \textbf{TRAVEL}.
+\\
+\textbf{Nie jest kapitanem}\\
+Jeśli w poprzednim stanie otrzymał zapytanie TRAVEL\_READY i nie zmienił łodzi, odpowiada ACK\_TRAVEL, w przeciwnym razie,
+oczekuje na TRAVEL\_READY, na który odpowiada ACK\_TRAVEL. Następnie oczekuje na DEPART\_SUBMAR albo DEPART\_SUBMAR\_NOT\_FULL. Ponownie odpowiada ACK\_TRAVEL i przechodzi do stanu \textbf{TRAVEL}.\\
+Czasami może się zdarzyć (np. w przypadku wykrycia zakleszczenia, gdyż wtedy łodzie odpływają mając wolne miejsca), że proces znajdzie się w stanie \textbf{BOARDED}, gdy wybrana przez niego łódź jest w podróży.
+Dlatego, śpiący proces, oprócz obu wersji DEPART\_SUBMAR może być obudzony przez RETURN\_SUBMAR\{\textit{my\_submarine\_id, ...}\}. Taki proces zachowuje się tak, jak gdyby dopiero wszedł do stanu \textbf{BOARDED}.
+\\
+\\
+\textbf{Reakcja na wiadomości}
+\begin{description}
+    \item [REQ\_PONY] Proces jest w sekcji krytycznej, więc dodaje nadawcę do kolejki \textit{queue\_pony} i nic nie odpowiada.
+    \item [ACK\_PONY] Ignoruje.
+    \item [REQ\_SUBMAR\{\textit{submarine\_id}\}] Dodaje nadawcę do kolejki \textit{queue\_submar\{id\}} powiązanej ze wskazaną przez parametr \textit{submarine\_id} łodzią podwodną i odpowiada ACK\_SUBMAR. Jeśli jest kapitanem, sprawdza czy doszło do zakleszczenia.
+    \item [ACK\_SUBMAR] Niemożliwe, ignoruje.
+    \item [FULL\_SUBMAR\_STAY\{\textit{submarine\_id}\}] Oznacza na liście \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest niedostępna. Jeśli jest kapitanem, rozpoczyna procedurę wypłynięcia.
+    \item [FULL\_SUBMAR\_RETREAT\{\textit{submarine\_id}\}] Oznacza na liście\\
+     \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest niedostępna oraz usuwa nadawcę z kolejki \textit{queue\_submar\{id\}} powiązanej z łodzią wskazywaną przez parametr \textit{submarine\_id}. Jeśli jest kapitanem, rozpoczyna procedurę wypłynięcia oraz usuwa proces z listy \textit{boarded\_on\_my\_submarine}, dodatkowo przestaje oczekiwać na ACK\_TRAVEL od tego procesu.
+    \item [RETURN\_SUBMAR\{\textit{submarine\_id, passenger\_no}\}] Oznacza na liście \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest dostępna
+    oraz usuwa z początku kolejki \textit{queue\_submar\{id\}} powiązanej z łodzią wskazywaną przez parametr \textit{submarine\_id} \textit{passenger\_no} pozycji. Jeśli \textit{submarine\_id} = \textit{my\_submarine\_id}, proces budzi się.
+    \item [TRAVEL\_READY] Jeśli nim jest - niemożliwe, ignoruje, jeśli nim nie jest, odpowiada ACK\_TRAVEL.
+    \item [ACK\_TRAVEL] Jeśli jest kapitanem inkrementuje licznik otrzymanych potwierdzeń, jeśli nim nie jest, niemożliwe, ignoruje.
+    \item [DEPART\_SUBMAR] Jeśli jest kapitanem - niemożliwe, ignoruje. Jeśli nim nie jest, odpowiada ACK\_TRAVEL i przechodzi do stanu TRAVEL.
+    \item [DEPART\_SUBMAR\_NOT\_FULL] Jeśli jest kapitanem - niemożliwe, ignoruje. Jeśli nim nie jest, postępuje tak jak w przypadku DEPART\_SUBMAR oraz oznacza wszystkie łodzie, w których kolejce \textit{queue\_submar} znajduje się jakiś proces jako niedostępne (lista \textit{available\_submarines}).
+\end{description}
+
+\resetlinenumber[1]\linenumbers
+\subsubsection{\textbf{TRAVEL}}
+Ponownie, przetwarzanie jest zależne od tego czy proces jest kapitanem, zawsze jednak przejście następuje do \textbf{ON\_SHORE}.
+\\
+\textbf{Jest kapitanem}\\
+Czeka, do czasu, aż uzna, że podróż się skończyła i można dać pozostałym pasażerom sygnał do opuszczenia łodzi.\\
+W tym celu, ustawia \textit{received\_ack\_no} na 1, wysyła do każdego procesu z listy \textit{boarded\_on\_my\_submarine} (oprócz siebie samego) wiadomość RETURN\_SUBMAR dołączając do niej id łodzi oraz liczbę procesów na liście \textit{boarded\_on\_my\_submarine}.
+Usuwa z odpowiedniej kolejki \textit{queue\_submar} liczbę procesów równą liczbie pasażerów i czeka, na odpowiedzi ACK\_TRAVEL.\\
+Następnie wysyła tę samą wiadomość do wszystkich procesów, które nie znajdowały się z nim na pokładzie, tym razem nie oczekując już jednak potwierdzenia.
+Po czym przechodzi do stanu \textbf{ON\_SHORE}.
+\\
+\textbf{Nie jest kapitanem}\\
+Czeka na wiadomość RETURN\_SUBMAR od kapitana, usuwa wskazaną liczbę procesów z kolejki, odpowiada ACK\_TRAVEL i przechodzi do stanu \textbf{ON\_SHORE}.
+\\
+\\
+\textbf{Reakcja na wiadomości}
+\begin{description}
+    \item [REQ\_PONY] Proces jest w sekcji krytycznej, więc dodaje nadawcę do kolejki \textit{queue\_pony} i nic nie odpowiada.
+    \item [ACK\_PONY] Ignoruje.
+    \item [REQ\_SUBMAR\{\textit{submarine\_id}\}] Dodaje nadawcę do kolejki \textit{queue\_submar\{id\}} powiązanej ze wskazaną przez parametr \textit{submarine\_id} łodzią podwodną i odpowiada ACK\_SUBMAR.
+    \item [ACK\_SUBMAR] Niemożliwe, ignoruje.
+    \item [FULL\_SUBMAR\_STAY\{\textit{submarine\_id}\}] Oznacza na liście \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest niedostępna.
+    \item [FULL\_SUBMAR\_RETREAT\{\textit{submarine\_id}\}] Oznacza na liście\\
+     \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest niedostępna oraz usuwa nadawcę z kolejki \textit{queue\_submar\{id\}} powiązanej z łodzią wskazywaną przez parametr \textit{submarine\_id}.
+    \item [RETURN\_SUBMAR\{\textit{submarine\_id, passenger\_no}\}] Jeśli wiadomość dotyczy łodzi, na której się znajduje postępuje według kroków opisanych powyżej. W przeciwnym razie, oznacza na liście \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest dostępna
+    oraz usuwa z początku kolejki \textit{queue\_submar\{id\}} powiązanej z łodzią wskazywaną przez parametr \textit{submarine\_id} \textit{passenger\_no} pozycji.
+    \item [TRAVEL\_READY] Niemożliwe, ignoruje.
+    \item [ACK\_TRAVEL] Jeśli jest kapitanem inkrementuje licznik otrzymanych potwierdzeń, jeśli nim nie jest, niemożliwe, ignoruje.
+    \item [DEPART\_SUBMAR] Niemożliwe, ignoruje.
+    \item [DEPART\_SUBMAR\_NOT\_FULL] Niemożliwe, ignoruje.
+\end{description}
+
+\resetlinenumber[1]\linenumbers
+\subsection{\textbf{ON\_SHORE}}
+Przechodzi do stanu \textbf{RESTING} po wysłaniu ACK\_PONY do wszystkich procesów z kolejki \textit{queue\_pony} czyszcząc tę listę.
+\\
+\\
+\textbf{Reakcja na wiadomości}
+\begin{description}
+    \item [REQ\_PONY] Odpowiada ACK\_PONY.
+    \item [ACK\_PONY] Ignoruje.
+    \item [REQ\_SUBMAR\{\textit{submarine\_id}\}] Dodaje nadawcę do kolejki \textit{queue\_submar\{id\}} powiązanej ze wskazaną przez parametr \textit{submarine\_id} łodzią podwodną i odpowiada ACK\_SUBMAR.
+    \item [ACK\_SUBMAR] Niemożliwe, ignoruje.
+    \item [FULL\_SUBMAR\_STAY\{\textit{submarine\_id}\}] Oznacza na liście \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest niedostępna.
+    \item [FULL\_SUBMAR\_RETREAT\{\textit{submarine\_id}\}] Oznacza na liście\\
+     \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest niedostępna oraz usuwa nadawcę z kolejki \textit{queue\_submar\{id\}} powiązanej z łodzią wskazywaną przez parametr \textit{submarine\_id}.
+    \item [RETURN\_SUBMAR\{\textit{submarine\_id, passenger\_no}\}] Oznacza na liście \textit{available\_submarine\_list}, że łódź wskazywana przez parametr \textit{submarine\_id} jest dostępna
+    oraz usuwa z początku kolejki \textit{queue\_submar\{id\}} powiązanej z łodzią wskazywaną przez parametr \textit{submarine\_id} \textit{passenger\_no} pozycji.
+    \item [TRAVEL\_READY] Niemożliwe, ignoruje.
+    \item [ACK\_TRAVEL] Niemożliwe, ignoruje.
+    \item [DEPART\_SUBMAR] Niemożliwe, ignoruje.
+    \item [DEPART\_SUBMAR\_NOT\_FULL] Niemożliwe, ignoruje.
+\end{description}
+\end{document}

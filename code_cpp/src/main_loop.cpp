@@ -117,24 +117,23 @@ void MainLoop::handler_boarded() {
             Debug::dprint(*tourist, "Submarine deadlock detected!");
         }
         tourist->fill_boarded_on_my_submarine(*sys_info);
-        int boarded_on_my_submar_no = tourist->boarded_on_my_submarine.unsafe_get_size(); // This vector's size can only be changed in one place - the line above
+        int boarded_on_my_submar_no = tourist->boarded_on_my_submarine.safe_get_size();
         if (boarded_on_my_submar_no == 1) { 
             Debug::dprintf(*tourist, "Submarine %d is ready to depart and I'm alone, changing state to TRAVEL", my_submarine_id);
             tourist->state.safe_set(Tourist::TRAVEL);
         } else {
-            Debug::dprintf(*tourist, "Submarine %d is ready to depart, asking for permission to start a journey", my_submarine_id);
+            Debug::dprintf(*tourist, "Submarine %d is ready to depart, asking for %d permissions to start a journey", my_submarine_id, boarded_on_my_submar_no-1);
             tourist->received_ack_no = 1;
             Packet(Packet::TRAVEL_READY).send_to_travelling_with_me(*tourist);
-            Debug::dprint(*tourist, "Waiting for answers");
             tourist->cond_var.wait_for(ConditionVar::ALL_ACK_SIGNAL);
             Debug::dprint(*tourist, "Received all of the ACK_TRAVEL");
             Packet::msg_t msg_type;
             if (deadlock_detected) {
                 msg_type = Packet::DEPART_SUBMAR_NOT_FULL;
-                Debug::dprintf(*tourist, "Informing %d other passengers on %d that submarines are leaving not full", boarded_on_my_submar_no, my_submarine_id);
+                Debug::dprintf(*tourist, "Informing %d other passengers on %d that submarines are leaving not full", boarded_on_my_submar_no-1, my_submarine_id);
             } else {
                 msg_type = Packet::DEPART_SUBMAR;
-                Debug::dprintf(*tourist, "Informing %d other passengers on %d that the submarine is leaving", boarded_on_my_submar_no, my_submarine_id);
+                Debug::dprintf(*tourist, "Informing %d other passengers on %d that the submarine is leaving", boarded_on_my_submar_no-1, my_submarine_id);
             }
             tourist->received_ack_no = 1;
             Packet(msg_type).send_to_travelling_with_me(*tourist);

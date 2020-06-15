@@ -69,3 +69,45 @@ void Debug::dprintf(Tourist &tourist, std::string format, ...) {
     #endif //DEBUG_USE_COLOR
     va_end(args);
 }
+
+void Debug::dprintp(Tourist &tourist, Packet &packet, std::string text) {
+    #ifdef DEBUG_SHOW_SUBMAR_QUEUE
+    printSubmarineQueues(tourist);
+    #endif //DEBUG_SHOW_SUBMAR_QUEUE
+    int tourist_id = tourist.get_id();
+    #ifdef DEBUG_USE_COLOR
+    if (tourist_id < colors_count) {
+    printf("\033[%smId %d - Clock %d - %s - %s\033[0m\n", colors[tourist_id], tourist_id, packet.get_timestamp(), stateNames[tourist.state.unsafe_get()], text.c_str());
+    } else {
+    printf("Id %d - Clock %d - %s - %s\n", tourist_id, packet.get_timestamp(), stateNames[tourist.state.unsafe_get()], text.c_str());
+    }
+    #else //DEBUG_USE_COLOR
+    printf("Id %d - Clock %d - %s - %s\n", tourist_id, packet.get_timestamp(), stateNames[tourist.state.unsafe_get()], text.c_str());
+    #endif //DEBUG_USE_COLOR
+}
+
+void Debug::dprintfp(Tourist &tourist, Packet &packet, std::string format, ...) {
+    #ifdef DEBUG_SHOW_SUBMAR_QUEUE
+    printSubmarineQueues(tourist);
+    #endif //DEBUG_SHOW_SUBMAR_QUEUE
+    va_list args;
+    const char *format_c = format.c_str();
+    va_start(args, format);
+    int tourist_id = tourist.get_id();
+    #ifdef DEBUG_USE_COLOR
+    if (tourist_id < colors_count) {
+        printf("\033[%smId %d - Clock %d - %s - ", colors[tourist_id], tourist_id, packet.get_timestamp(), stateNames[tourist.state.unsafe_get()]);
+        vprintf(format_c, args);
+        puts("\033[0m");
+    } else {
+        printf("Id %d - Clock %d - %s - ", tourist_id, packet.get_timestamp(), stateNames[tourist.state.unsafe_get()]);
+        vprintf(format_c, args);
+        puts(""); // Print new line
+    }
+    #else //DEBUG_USE_COLOR
+    printf("Id %d - Clock %d - %s - ", tourist_id, packet.get_timestamp(), stateNames[tourist.state.unsafe_get()]);
+    vprintf(format_c, args);
+    puts(""); // Print new line
+    #endif //DEBUG_USE_COLOR
+    va_end(args);
+}
