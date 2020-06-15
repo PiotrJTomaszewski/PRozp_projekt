@@ -90,6 +90,25 @@ który nie zmieści się na żadnej łodzi. Proces taki nie mógłby brać udzia
 pozostawałby więc w uśpieniu, nigdy nie ubiegając się o dostęp do sekcji krytycznej.
 
 \resetlinenumber[1]\linenumbers
+\section{Złożoność czasowa i komunikacyjna}
+Przyjmijmy, że $N$ reprezentuje liczbę procesów w systemie.
+
+\subsection{Zajęcie i zwolnienie stroju kucyka}
+Zajęcie sekcji krytycznej związanej ze strojem kucyka wymaga wysłania N-1 zapytań REQ\_PONY. W odpowiedzi otrzymamy N-1 ACK\_PONY.
+Zwolnienie sekcji krytycznej nie generuje żadnych dodatkowych wiadomości - wysyłane są tylko zakolejkowane wiadomości.
+Złożoność komunikacyjna wynosi więc $2\dot(N-1)$, natomiast złożoność czasowa: $2$.
+
+\subsection{Dostęp do łodzi podwodnej oraz rozpoczęcie i zakończenie wyprawy}
+Przyjmijmy, że $M$ reprezentuje liczbę turystów znajdujących się na danej łodzi podwodnej.
+Zajęcie sekcji krytycznej związanej z dostępem do łodzi podwodnej wymaga wysłania $N-1$ zapytań REQ\_SUBMAR. W odpowiedzi otrzymujemy $N-1$ odpowiedzi ACK\_SUBMAR.
+W celu rozpoczęcia wyprawy, kapitan musi wysłać $M-1$ TRAVEL\_READY, aby upewnić się, że pozostali pasażerowie są gotowi do drogi. W odpowiedzi dostaje $M-1$ ACK\_TRAVEL.
+Po upewnieniu się, musi ponownie wysłać $M-1$ wiadomości DEPART\_SUBAR i otrzymać $M-1$ odpowiedzi.
+Aby zakończyć podróż musi wysłać $N-1$ wiadomości RETURN\_SUBMAR. W rezultacie otrzymuje $M-1$ odpowiedzi. (Dokładniej, najpierw wysyła $M-1$ wiadomości do współpasażerów, otrzymuje $M-1$ potwierdzeń, po czym wysyła $N-M$ wiadomości do pozostałych procesów, nie oczekując już na potwierdzenie).
+Łącznie, więc należy przesłać $3\dot(N-1) + 5\dot(M-1)$ wiadomości.
+Złożoność czasowa wynosi: $9$.
+
+
+\resetlinenumber[1]\linenumbers
 \subsection{Struktury i zmienne}
 \begin{description}
     \item [\textit{received\_ack\_no}] Liczba otrzymanych wiadomości typu ACK. Jest ustawiana na 1 przed rozesłaniem wiadomości wymagającej zebrania potwierdzeń.
